@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using static System.Environment;
 
 namespace totlib
 {
@@ -57,7 +58,7 @@ namespace totlib
                 values = timestamp;
             }
 
-            return string.Join(",", values) + Environment.NewLine;
+            return string.Join(",", values) + NewLine;
         }
 
         protected string CreateCsvHeaderForSeries(IEnumerable<string> columnNames)
@@ -73,7 +74,7 @@ namespace totlib
                 columnNames = time;
             }
 
-            return string.Join(",", columnNames) + Environment.NewLine;
+            return string.Join(",", columnNames) + NewLine;
         }
 
         protected abstract bool TryGetSeriesDefinition(string name, out SeriesDefinition seriesDefinition);
