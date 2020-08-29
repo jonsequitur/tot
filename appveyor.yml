@@ -1,0 +1,18 @@
+image: Visual Studio 2019
+artifacts:
+  - path: '**\*.nupkg'
+
+configuration:
+  - Release
+
+build_script:
+  - cmd: >-
+      dotnet build tot.sln -p:Version=%APPVEYOR_BUILD_VERSION%
+
+after_build:
+  - cmd: >-
+      dotnet pack .\src\tot\tot.csproj -c:release --no-build -p:Version=%APPVEYOR_BUILD_VERSION%
+
+test_script:
+  - cmd: >-
+      dotnet test .\TRexLib.Tests\TRexLib.Tests.csproj

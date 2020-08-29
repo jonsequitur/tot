@@ -10,6 +10,11 @@
 *.userosscache
 *.sln.docstates
 .dotnet/
+.vscode/
+.fake
+\.ionide/
+.ionide
+
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -354,9 +359,6 @@ wwwroot/client/
 *.trx
 Untitled*.ipynb
 
-docs/\.ionide/
-
-\.ionide/
 
 
 .ipynb_checkpoints/
@@ -366,6 +368,3 @@ docs/\.ionide/
 samples/notebooks/*/Samples/housing.csv
 
 src/Microsoft.DotNet.Interactive.Js/dist/
-
-.fake
-.ionide
