@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+
+    <ToolCommandName>tot</ToolCommandName>
+    <PackAsTool>true</PackAsTool>
+
+    <Title>A command line tool for tracking time series data</Title> 
+    <Description>tot lets you define time series schema and append data quickly. Use it for personal tasks or data ingestion.</Description>
+    <Authors>jonsequitur</Authors>
+    <PackageTags>time-series</PackageTags>
+    <RepositoryUrl>https://github.com/jonsequitur/tot</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta1.20428.1" />
+    <PackageReference Include="TimeSpanParserUtil" Version="1.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\totlib\totlib.csproj" />
+  </ItemGroup>
+
+</Project>
