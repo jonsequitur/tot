@@ -15,4 +15,4 @@ after_build:
 
 test_script:
   - cmd: >-
-      dotnet test .\TRexLib.Tests\TRexLib.Tests.csproj
+      dotnet test .\src\tot.Tests\tot.Tests.csproj
