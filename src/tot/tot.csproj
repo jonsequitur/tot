@@ -7,11 +7,12 @@
     <ToolCommandName>tot</ToolCommandName>
     <PackAsTool>true</PackAsTool>
 
-    <Title>A command line tool for tracking time series data</Title> 
+    <Title>A command line tool for writing time series CSV files</Title> 
     <Description>tot lets you define time series schema and append data quickly. Use it for personal tasks or data ingestion.</Description>
     <Authors>jonsequitur</Authors>
     <PackageTags>time-series</PackageTags>
     <RepositoryUrl>https://github.com/jonsequitur/tot</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
