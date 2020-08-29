@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using totlib;
+using TimeSpanParserUtil;
 
 namespace tot
 {
@@ -32,7 +33,25 @@ namespace tot
 
             var timeOption = new Option<DateTime>(
                 "--time",
-                description: "The time to record with the event");
+                description: "The time to record with the event", 
+                parseArgument: result =>
+                {
+                    var token = result.Tokens.Single().Value;
+
+                    if (DateTime.TryParse(token, out var datetime))
+                    {
+                        return datetime;
+                    }
+
+                    if (TimeSpanParser.TryParse(token, out var timespan))
+                    {
+                        return (dataAccessor?.Clock ?? SystemClock.Instance).Now.Add(timespan);
+                    }
+
+                    result.ErrorMessage = $"Couldn't figure out what time \"{token}\" refers to.";
+
+                    return default;
+                });
 
             var rootCommand = new RootCommand("tot")
             {
@@ -131,6 +150,6 @@ namespace tot
             dataAccessor ??=
                 new FileBasedDataAccessor(
                     path,
-                    new SystemClock());
+                    SystemClock.Instance);
     }
 }

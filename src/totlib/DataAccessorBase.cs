@@ -7,12 +7,12 @@ namespace totlib
 {
     public abstract class DataAccessorBase : IDataAccessor
     {
-        private readonly IClock _clock;
-
         protected DataAccessorBase(IClock clock)
         {
-            _clock = clock;
+            Clock = clock;
         }
+
+        public IClock Clock { get; }
 
         public abstract void AppendValues(string seriesName, DateTime time, string[] values);
 
@@ -44,7 +44,7 @@ namespace totlib
         {
             if (time == default)
             {
-                time = _clock.Now;
+                time = Clock.Now;
             }
 
             var timestamp = new[] { time.ToString("s") };

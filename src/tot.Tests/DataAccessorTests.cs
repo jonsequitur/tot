@@ -146,7 +146,7 @@ namespace tot.Tests
 
             configuration.ReadCsv("things").Should().Be($@"time
 {Clock.Now:s}
-");
+".NormalizeLineEndings());
         }
     }
 

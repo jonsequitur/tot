@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta1.20428.1" />
+    <PackageReference Include="TimeSpanParserUtil" Version="1.2.0" />
   </ItemGroup>
 
   <ItemGroup>

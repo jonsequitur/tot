@@ -12,6 +12,8 @@ namespace totlib
         void CreateSeries(string seriesName, string[] columnNames);
 
         IEnumerable<string> ListSeries();
+
+        IClock Clock { get; }
     }
 
     public static class DataAccessor

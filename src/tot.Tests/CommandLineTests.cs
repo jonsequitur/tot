@@ -2,6 +2,7 @@ using System;
 using System.CommandLine.IO;
 using System.CommandLine.Parsing;
 using FluentAssertions;
+using FluentAssertions.Extensions;
 using totlib;
 using Xunit;
 using static System.Environment;
@@ -51,7 +52,7 @@ namespace tot.Tests
         }
 
         [Fact]
-        public void Time_can_be_specified_when_adding_records_to_a_series()
+        public void Time_can_be_specified_as_a_date_string_when_adding_records_to_a_series()
         {
             _parser.Invoke("add ate what howMany");
 
@@ -72,6 +73,30 @@ namespace tot.Tests
 {time3:s},bananas,8
 ".NormalizeLineEndings());
         }
+        
+        [Fact]
+        public void Time_can_be_specified_as_a_duration_when_adding_records_to_a_series()
+        {
+            _parser.Invoke("add ate what howMany");
+
+            var time1 = _clock.Now.AddHours(-8);
+            var time2 = _clock.Now.Subtract(4.Minutes());
+            var time3 = _clock.Now.AddMinutes(5).AddSeconds(23);
+
+            _parser.Invoke($"--time -8h ate bananas 3");
+            _parser.Invoke($"ate --time -4m bananas 5");
+            _parser.Invoke($"ate bananas 8 --time 5m23s");
+
+            var csv = dataAccessor.ReadCsv("ate.csv");
+
+            csv.Should()
+               .Be($@"time,what,howMany
+{time1:s},bananas,3
+{time2:s},bananas,5
+{time3:s},bananas,8
+".NormalizeLineEndings());
+        }
+
 
         [Fact]
         public void It_returns_an_error_if_a_series_is_added_twice()

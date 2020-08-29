@@ -9,6 +9,12 @@ namespace totlib
 
     public class SystemClock : IClock
     {
+        public static IClock Instance { get; } = new SystemClock();
+
+        private SystemClock()
+        {
+        }
+
         public DateTime Now => DateTime.Now;
     }
 
