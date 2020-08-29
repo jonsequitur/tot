@@ -32,7 +32,7 @@ namespace tot
                 getDefaultValue: () => new DirectoryInfo(Directory.GetCurrentDirectory()));
 
             var timeOption = new Option<DateTime>(
-                "--time",
+                new [] { "-t" , "--time" },
                 description: "The time to record with the event", 
                 parseArgument: result =>
                 {
