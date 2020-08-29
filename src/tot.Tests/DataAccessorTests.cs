@@ -62,6 +62,22 @@ namespace tot.Tests
         }
 
         [Fact]
+        public void It_returns_an_error_if_attempting_to_an_append_to_an_undefined_series()
+        {
+            var dataAccessor = GetConfiguration();
+
+            Action append = () =>
+                dataAccessor.AppendValues("nope");
+
+            append.Should()
+                  .Throw<TotException>()
+                  .Which
+                  .Message
+                  .Should()
+                  .Be("Series \"nope\" hasn't been defined. Use tot add to define it.");
+        }
+
+        [Fact]
         public void It_returns_an_error_if_too_many_values_are_added_to_a_series()
         {
             var dataAccessor = GetConfiguration();
@@ -71,7 +87,7 @@ namespace tot.Tests
             Action append = () => dataAccessor.AppendValues("series", "one", "two", "three");
 
             append.Should()
-                  .Throw<ArgumentException>()
+                  .Throw<TotException>()
                   .Which
                   .Message
                   .Should()
@@ -88,7 +104,7 @@ namespace tot.Tests
             Action append = () => dataAccessor.AppendValues("series", "one");
 
             append.Should()
-                  .Throw<ArgumentException>()
+                  .Throw<TotException>()
                   .Which
                   .Message
                   .Should()
@@ -102,7 +118,7 @@ namespace tot.Tests
 
             read
                 .Should()
-                .Throw<ArgumentException>()
+                .Throw<TotException>()
                 .Which
                 .Message
                 .Should()

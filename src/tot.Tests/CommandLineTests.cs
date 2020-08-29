@@ -5,6 +5,7 @@ using FluentAssertions;
 using totlib;
 using Xunit;
 using Xunit.Abstractions;
+using static System.Environment;
 
 namespace tot.Tests
 {
@@ -32,7 +33,7 @@ namespace tot.Tests
 
             dataAccessor.ReadCsv("ate.csv")
                         .Should()
-                        .Be("time,what,howMany,deliciousness" + Environment.NewLine);
+                        .Be("time,what,howMany,deliciousness" + NewLine);
         }
 
         [Fact]
@@ -95,7 +96,7 @@ namespace tot.Tests
 
             _console.Out
                     .ToString()
-                    .Split(Environment.NewLine)
+                    .Split(NewLine)
                     .Should()
                     .ContainInOrder("animal", "fruit");
         }
@@ -119,6 +120,55 @@ namespace tot.Tests
                    .GetSuggestions()
                    .Should()
                    .Contain(new[] { "apple", "banana", "cherry" });
+        }
+
+        [Fact]
+        public void When_series_is_already_defined_then_a_friendly_error_is_displayed()
+        {
+            _parser.Invoke("add something", _console);
+
+            var testConsole = new TestConsole();
+            var result = _parser.Invoke("add something", testConsole);
+
+            result.Should().Be(1);
+
+            testConsole.Error.ToString().Should().Be("Series \"something\" has already been defined." + NewLine);
+        }
+
+        [Fact]
+        public void When_series_is_not_defined_then_a_friendly_error_is_displayed()
+        {
+            var result = _parser.Invoke("something", _console);
+
+            result.Should().Be(1);
+
+            _console.Error.ToString().Should().Be("Series \"something\" hasn't been defined. Use tot add to define it." + NewLine);
+        }
+
+        [Fact]
+        public void When_too_many_values_are_appended_then_a_friendly_error_is_displayed()
+        {
+            _parser.Invoke("add series one two");
+
+            var console = new TestConsole();
+            var result = _parser.Invoke("series 1 2 3", console);
+
+            result.Should().Be(1);
+
+            console.Error.ToString().Should().Be("Too many values specified. Series \"series\" expects values: one,two" + NewLine);
+        }
+
+        [Fact]
+        public void When_too_few_values_are_appended_then_a_friendly_error_is_displayed()
+        {
+            _parser.Invoke("add series one two");
+
+            var console = new TestConsole();
+            var result = _parser.Invoke("series 1", console);
+
+            result.Should().Be(1);
+
+            console.Error.ToString().Should().Be("Too few values specified. Series \"series\" expects values: one,two" + NewLine);
         }
     }
 }

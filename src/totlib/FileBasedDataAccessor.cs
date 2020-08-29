@@ -21,7 +21,7 @@ namespace totlib
 
         public override void AppendValues(string seriesName, DateTime time, string[] values)
         {
-            TryGetSeriesDefinition(seriesName, out var seriesDefinition);
+            var seriesDefinition = GetSeriesDefinitionOrThrow(seriesName);
 
             seriesDefinition.ValidateValues(values);
 
@@ -100,12 +100,12 @@ namespace totlib
 
                 if (valuesLength > colCountWithoutTime)
                 {
-                    throw new ArgumentException($"Too many values specified. Series \"{Name}\" expects values: {expectedColumns}");
+                    throw new TotException($"Too many values specified. Series \"{Name}\" expects values: {expectedColumns}");
                 }
 
                 if (valuesLength < colCountWithoutTime)
                 {
-                    throw new ArgumentException($"Too few values specified. Series \"{Name}\" expects values: {expectedColumns}");
+                    throw new TotException($"Too few values specified. Series \"{Name}\" expects values: {expectedColumns}");
                 }
             }
         }

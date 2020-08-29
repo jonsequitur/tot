@@ -25,7 +25,7 @@ namespace totlib
         {
             if (!TryGetSeriesDefinition(seriesName, out var seriesDefinition))
             {
-                throw new ArgumentException($"Series \"{seriesName}\" hasn't been defined. Use tot add to define it.");
+                throw new TotException($"Series \"{seriesName}\" hasn't been defined. Use tot add to define it.");
             }
 
             return seriesDefinition;
@@ -35,7 +35,7 @@ namespace totlib
         {
             if (TryGetSeriesDefinition(series.Path, out _))
             {
-                throw new ArgumentException($"Series \"{series.Name}\" has already been defined.");
+                throw new TotException($"Series \"{series.Name}\" has already been defined.");
             }
         }
 

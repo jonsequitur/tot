@@ -3,15 +3,17 @@ using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Builder;
 using System.CommandLine.Invocation;
+using System.CommandLine.IO;
 using System.CommandLine.Parsing;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using totlib;
 
 namespace tot
 {
-    public class Program
+    public static class Program
     {
         static async Task<int> Main(string[] args)
         {
@@ -98,19 +100,37 @@ namespace tot
             }
 
             var builder = new CommandLineBuilder(rootCommand)
-                .UseDefaults();
+                          .HandleExceptionsGracefully()
+                          .UseDefaults();
 
             return builder.Build();
         }
 
+        public static CommandLineBuilder HandleExceptionsGracefully(this CommandLineBuilder builder) =>
+            builder.UseMiddleware(async (context, next) =>
+            {
+                try
+                {
+                    await next(context);
+                }
+                catch (TotException e)
+                {
+                    context.Console.Error.WriteLine(e.Message);
+                    context.ResultCode = 1;
+                }
+                catch (TargetInvocationException e) when (e.InnerException is TotException)
+                {
+                    context.Console.Error.WriteLine(e.InnerException.Message);
+                    context.ResultCode = 1;
+                }
+            }, MiddlewareOrder.ExceptionHandler);
+
         private static void EnsureDataAccessorIsInitialized(
             DirectoryInfo path,
-            ref IDataAccessor dataAccessor)
-        {
+            ref IDataAccessor dataAccessor) =>
             dataAccessor ??=
                 new FileBasedDataAccessor(
                     path,
                     new SystemClock());
-        }
     }
 }
