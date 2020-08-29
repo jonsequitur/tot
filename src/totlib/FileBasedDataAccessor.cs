@@ -100,7 +100,14 @@ namespace totlib
 
                 if (valuesLength > colCountWithoutTime)
                 {
-                    throw new TotException($"Too many values specified. Series \"{Name}\" expects values: {expectedColumns}");
+                    if (colCountWithoutTime == 0)
+                    {
+                        throw new TotException($"Too many values specified. Series \"{Name}\" expects none.");
+                    }
+                    else
+                    {
+                        throw new TotException($"Too many values specified. Series \"{Name}\" expects values: {expectedColumns}");
+                    }
                 }
 
                 if (valuesLength < colCountWithoutTime)

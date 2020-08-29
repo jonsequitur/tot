@@ -4,7 +4,6 @@ using System.CommandLine.Parsing;
 using FluentAssertions;
 using totlib;
 using Xunit;
-using Xunit.Abstractions;
 using static System.Environment;
 
 namespace tot.Tests
@@ -15,11 +14,9 @@ namespace tot.Tests
         private readonly Parser _parser;
         private readonly TestClock _clock;
         private readonly TestConsole _console;
-        private ITestOutputHelper _output;
 
-        public CommandLineTests(ITestOutputHelper output)
+        public CommandLineTests()
         {
-            _output = output;
             _clock = new TestClock();
             dataAccessor = new InMemoryDataAccessor(_clock);
             _console = new TestConsole();
@@ -50,7 +47,7 @@ namespace tot.Tests
                .Be($@"time,what,howMany
 {_clock.Now:s},bananas,3
 {_clock.Now:s},bananas,5
-");
+".NormalizeLineEndings());
         }
 
         [Fact]
@@ -73,7 +70,7 @@ namespace tot.Tests
 {time1:s},bananas,3
 {time2:s},bananas,5
 {time3:s},bananas,8
-");
+".NormalizeLineEndings());
         }
 
         [Fact]

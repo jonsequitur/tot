@@ -42,7 +42,7 @@ namespace tot.Tests
                         .Be($@"time,one,two,three
 {firstTimeEntry:s},1,2,3
 {secondTimeEntry:s},11,22,33
-");
+".NormalizeLineEndings());
         }
 
         [Fact]
