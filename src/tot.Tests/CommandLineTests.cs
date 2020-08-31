@@ -97,6 +97,25 @@ namespace tot.Tests
 ".NormalizeLineEndings());
         }
 
+        [Theory]
+        [InlineData("2040-08-31T10:03:47", "8pm")]
+        public void When_time_is_specified_without_a_date_then_it_chooses_a_time_in_the_past(
+            string currentTime,
+            string timeArgument)
+        {
+            _clock.AdvanceTo(DateTime.Parse(currentTime));
+
+            _parser.Invoke("add x");
+
+            _parser.Invoke($"x -t {timeArgument}");
+
+            var csv = dataAccessor.ReadCsv("x.csv");
+
+            csv.Should()
+               .Be($@"time
+2040-08-30T20:00:00
+".NormalizeLineEndings());
+        }
 
         [Fact]
         public void It_returns_an_error_if_a_series_is_added_twice()

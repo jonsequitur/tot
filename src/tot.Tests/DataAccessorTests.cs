@@ -148,6 +148,24 @@ namespace tot.Tests
 {Clock.Now:s}
 ".NormalizeLineEndings());
         }
+
+        [Fact]
+        public void Values_cannot_contain_commas()
+        {
+            var configuration = GetConfiguration();
+
+            configuration.CreateSeries("stuff", "value");
+
+          Action append =()=>  configuration.AppendValues("stuff", "one,two");
+
+          append.Should()
+                .Throw<TotException>()
+                .Which
+                .Message
+                .Should()
+                .Be("Values cannot contain commas but: \"one,two\"");
+        }
+
     }
 
     public class FileDataAccessorTests : DataAccessorTests, IDisposable

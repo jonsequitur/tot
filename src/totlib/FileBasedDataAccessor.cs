@@ -115,6 +115,11 @@ namespace totlib
                     throw new TotException($"Too few values specified. Series \"{Name}\" expects values: {expectedColumns}");
                 }
             }
+
+            if (values?.FirstOrDefault(v => v.Contains(",")) is { } hasComma)
+            {
+                throw new TotException($"Values cannot contain commas but: \"{hasComma}\"");
+            }
         }
 
         public static string GetPath(string name)

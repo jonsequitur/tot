@@ -23,5 +23,7 @@ namespace totlib
         public DateTime Now { get; set; } = new DateTime(2020, 9, 1);
 
         public void AdvanceBy(TimeSpan timespan) => Now += timespan;
+
+        public void AdvanceTo(DateTime dateTime) => Now = dateTime;
     }
 }
