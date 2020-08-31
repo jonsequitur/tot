@@ -5,10 +5,12 @@ using System.CommandLine.Builder;
 using System.CommandLine.Invocation;
 using System.CommandLine.IO;
 using System.CommandLine.Parsing;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Humanizer;
 using totlib;
 using TimeSpanParserUtil;
 
@@ -36,28 +38,41 @@ namespace tot
                 description: "The time to record with the event", 
                 parseArgument: result =>
                 {
-                    var token = result.Tokens.Single().Value;
+                    var token = result.Tokens.SingleOrDefault()?.Value;
 
-                    if (DateTime.TryParse(token, out var datetime))
+                    var now = (dataAccessor?.Clock ?? SystemClock.Instance).Now;
+
+                    if (DateTime.TryParse(token, provider: null, styles: DateTimeStyles.NoCurrentDateDefault, out var datetime))
                     {
+
+                        if (datetime.Date == default)
+                        {
+                            var yesterday = now.Subtract(TimeSpan.FromDays(1));
+                            return yesterday.Date.Add(datetime.TimeOfDay);
+                        }
+
                         return datetime;
+                    }
+
+                    if (token == null)
+                    {
+                        return now;
                     }
 
                     if (TimeSpanParser.TryParse(token, out var timespan))
                     {
-                        return (dataAccessor?.Clock ?? SystemClock.Instance).Now.Add(timespan);
+                        return now.Add(timespan);
                     }
 
                     result.ErrorMessage = $"Couldn't figure out what time \"{token}\" refers to.";
 
                     return default;
-                });
+                }, isDefault: true);
 
             var rootCommand = new RootCommand("tot")
             {
                 Add(),
                 List(),
-                pathOption,
                 timeOption,
                 new Argument<string>("series").AddSuggestions((result, match) =>
                 {
@@ -75,11 +90,15 @@ namespace tot
                 new Argument<IEnumerable<string>>("values")
             };
 
-            rootCommand.Handler = CommandHandler.Create<string, string[], DateTime, DirectoryInfo>((series, values, time, path) =>
+            rootCommand.AddGlobalOption(pathOption);
+
+            rootCommand.Handler = CommandHandler.Create<string, string[], DateTime, DirectoryInfo, IConsole>((series, values, time, path, console) =>
             {
                 EnsureDataAccessorIsInitialized(path, ref dataAccessor);
 
                 dataAccessor.AppendValues(series, time, values);
+
+                console.Out.WriteLine($"{time.Humanize(utcDate: false)}: {series} {string.Join(" ", values ?? Array.Empty<string>())}");
             });
 
             Command Add()
