@@ -106,19 +106,19 @@ namespace totlib
                     }
                     else
                     {
-                        throw new TotException($"Too many values specified. Series \"{Name}\" expects values: {expectedColumns}");
+                        throw new TotException($"Too many values specified. Series \"{Name}\" expects values for: {expectedColumns}");
                     }
                 }
 
                 if (valuesLength < colCountWithoutTime)
                 {
-                    throw new TotException($"Too few values specified. Series \"{Name}\" expects values: {expectedColumns}");
+                    throw new TotException($"Too few values specified. Series \"{Name}\" expects values for: {expectedColumns}");
                 }
             }
 
             if (values?.FirstOrDefault(v => v.Contains(",")) is { } hasComma)
             {
-                throw new TotException($"Values cannot contain commas but: \"{hasComma}\"");
+                throw new TotException($"Values can't contain commas but this does: \"{hasComma}\"");
             }
         }
 
