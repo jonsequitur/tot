@@ -98,10 +98,12 @@ namespace tot.Tests
         }
 
         [Theory]
-        [InlineData("2040-08-31T10:03:47", "8pm")]
+        [InlineData("2040-08-31T10:03:47", "8pm", "2040-08-30T20:00:00")]
+        [InlineData("2040-08-31T14:03:47", "7am", "2040-08-31T07:00:00")]
         public void When_time_is_specified_without_a_date_then_it_chooses_a_time_in_the_past(
             string currentTime,
-            string timeArgument)
+            string timeArgument,
+            string expected)
         {
             _clock.AdvanceTo(DateTime.Parse(currentTime));
 
@@ -113,7 +115,7 @@ namespace tot.Tests
 
             csv.Should()
                .Be($@"time
-2040-08-30T20:00:00
+{expected}
 ".NormalizeLineEndings());
         }
 
@@ -196,7 +198,7 @@ namespace tot.Tests
 
             result.Should().Be(1);
 
-            console.Error.ToString().Should().Be("Too many values specified. Series \"series\" expects values: one,two" + NewLine);
+            console.Error.ToString().Should().Be("Too many values specified. Series \"series\" expects values for: one,two" + NewLine);
         }
 
         [Fact]
@@ -209,7 +211,7 @@ namespace tot.Tests
 
             result.Should().Be(1);
 
-            console.Error.ToString().Should().Be("Too few values specified. Series \"series\" expects values: one,two" + NewLine);
+            console.Error.ToString().Should().Be("Too few values specified. Series \"series\" expects values for: one,two" + NewLine);
         }
     }
 }

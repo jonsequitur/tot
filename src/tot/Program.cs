@@ -42,21 +42,27 @@ namespace tot
 
                     var now = (dataAccessor?.Clock ?? SystemClock.Instance).Now;
 
-                    if (DateTime.TryParse(token, provider: null, styles: DateTimeStyles.NoCurrentDateDefault, out var datetime))
-                    {
-
-                        if (datetime.Date == default)
-                        {
-                            var yesterday = now.Subtract(TimeSpan.FromDays(1));
-                            return yesterday.Date.Add(datetime.TimeOfDay);
-                        }
-
-                        return datetime;
-                    }
-
                     if (token == null)
                     {
                         return now;
+                    }
+
+                    if (DateTime.TryParse(token, provider: null, styles: DateTimeStyles.NoCurrentDateDefault, out var specified))
+                    {
+                        if (specified.Date == default)
+                        {
+                            if (now.TimeOfDay < specified.TimeOfDay)
+                            {
+                                var yesterday = now.Subtract(TimeSpan.FromDays(1));
+                                return yesterday.Date.Add(specified.TimeOfDay);
+                            }
+                            else
+                            {
+                                return now.Date.Add(specified.TimeOfDay);
+                            }
+                        }
+
+                        return specified;
                     }
 
                     if (TimeSpanParser.TryParse(token, out var timespan))

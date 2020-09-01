@@ -91,7 +91,7 @@ namespace tot.Tests
                   .Which
                   .Message
                   .Should()
-                  .Be("Too many values specified. Series \"series\" expects values: one,two");
+                  .Be("Too many values specified. Series \"series\" expects values for: one,two");
         }
 
         [Fact]
@@ -108,7 +108,7 @@ namespace tot.Tests
                   .Which
                   .Message
                   .Should()
-                  .Be("Too few values specified. Series \"series\" expects values: one,two");
+                  .Be("Too few values specified. Series \"series\" expects values for: one,two");
         }
 
         [Fact]
@@ -163,7 +163,7 @@ namespace tot.Tests
                 .Which
                 .Message
                 .Should()
-                .Be("Values cannot contain commas but: \"one,two\"");
+                .Be("Values can't contain commas but this does: \"one,two\"");
         }
 
     }
