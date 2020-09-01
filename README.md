@@ -33,3 +33,12 @@
 
 <h3 style="padding-top:1em"><strong>Origin</strong></h3><div><p>Mid 18th century from archaic tot ‘set of figures to be added up’, abbreviation of <a href="/en/definition/total">total</a> or of Latin totum ‘the whole’.</p></div>
 </div>
+
+`tot` is a simple command line tool that lets you keep track of things.
+
+
+
+
+
+
+
