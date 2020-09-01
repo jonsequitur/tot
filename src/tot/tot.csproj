@@ -7,10 +7,9 @@
     <ToolCommandName>tot</ToolCommandName>
     <PackAsTool>true</PackAsTool>
 
-    <Title>A simple command line tool to help you keep track of things.</Title> 
-    <Description>tot lets you record time-stamped events. Use it for personal time tracking or automating the ingestion of time series data.</Description>
+    <Description>A simple command line tool to help you keep track of things</Description>
     <Authors>jonsequitur</Authors>
-    <PackageTags>time-series time-tracking productivity</PackageTags>
+    <PackageTags>time-series time-tracking productivity data</PackageTags>
     <RepositoryUrl>https://github.com/jonsequitur/tot</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
