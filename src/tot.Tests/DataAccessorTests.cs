@@ -62,7 +62,7 @@ namespace tot.Tests
         }
 
         [Fact]
-        public void It_returns_an_error_if_attempting_to_an_append_to_an_undefined_series()
+        public void It_throws_if_attempting_to_an_append_to_an_undefined_series()
         {
             var dataAccessor = GetConfiguration();
 
@@ -78,7 +78,7 @@ namespace tot.Tests
         }
 
         [Fact]
-        public void It_returns_an_error_if_too_many_values_are_added_to_a_series()
+        public void It_throws_if_too_many_values_are_added_to_a_series()
         {
             var dataAccessor = GetConfiguration();
 
@@ -95,7 +95,7 @@ namespace tot.Tests
         }
 
         [Fact]
-        public void It_returns_an_error_if_too_few_values_are_added_to_a_series()
+        public void It_throws_if_too_few_values_are_added_to_a_series()
         {
             var dataAccessor = GetConfiguration();
 
@@ -165,7 +165,23 @@ namespace tot.Tests
                 .Should()
                 .Be("Values can't contain commas but this does: \"one,two\"");
         }
+        
+        [Fact]
+        public void Values_cannot_contain_newlines()
+        {
+            var configuration = GetConfiguration();
 
+            configuration.CreateSeries("stuff", "value");
+
+          Action append =()=>  configuration.AppendValues("stuff", "one\ntwo");
+
+          append.Should()
+                .Throw<TotException>()
+                .Which
+                .Message
+                .Should()
+                .Be("Values can't contain newlines but this does: \"one\ntwo\"");
+        }
     }
 
     public class FileDataAccessorTests : DataAccessorTests, IDisposable
