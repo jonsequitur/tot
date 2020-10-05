@@ -21,7 +21,7 @@ namespace tot.Tests
             _clock = new TestClock();
             dataAccessor = new InMemoryDataAccessor(_clock);
             _console = new TestConsole();
-            _parser = Program.CreateCommandLineParser(dataAccessor);
+            _parser = CommandLineParser.Create(dataAccessor);
         }
 
         [Fact]
