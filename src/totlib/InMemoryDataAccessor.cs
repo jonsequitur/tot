@@ -11,7 +11,7 @@ namespace totlib
         {
         }
 
-        public Dictionary<string, string> Files { get; } = new Dictionary<string, string>();
+        public Dictionary<string, List<string>> Files { get; } = new Dictionary<string, List<string>>();
 
         public override void AppendValues(string seriesName, DateTime time, string[] values)
         {
@@ -19,7 +19,13 @@ namespace totlib
 
             seriesDefinition.ValidateValues(values);
 
-            Files[seriesDefinition.Path] = ReadCsv(seriesDefinition.Path) + CreateTimeStampedCsvLine(time, values);
+            if (!Files.TryGetValue(seriesDefinition.Path, out var lines))
+            {
+                lines = new List<string>();
+                Files[seriesDefinition.Path] = lines;
+            }
+
+            lines.Add(CreateTimeStampedCsvLine(time, values));
         }
 
         public override void CreateSeries(string seriesName, string[] columnNames)
@@ -28,19 +34,23 @@ namespace totlib
 
             ThrowIfSeriesIsDefined(seriesDefinition);
 
-            Files[seriesDefinition.Path] = CreateCsvHeaderForSeries(columnNames);
+            Files[seriesDefinition.Path] =
+                new List<string>
+                {
+                    CreateCsvHeaderForSeries(columnNames)
+                };
         }
 
         public override IEnumerable<string> ListSeries() =>
             Files.Keys.Select(Path.GetFileNameWithoutExtension);
 
-        public override string ReadCsv(string series)
+        public override IEnumerable<string> ReadLines(string series)
         {
             var definition = GetSeriesDefinitionOrThrow(series);
 
-            if (Files.TryGetValue(definition.Path, out var content))
+            if (Files.TryGetValue(definition.Path, out var lines))
             {
-                return content;
+                return lines;
             }
             else
             {
@@ -54,9 +64,7 @@ namespace totlib
 
             if (Files.TryGetValue(path, out var content))
             {
-                var columnNames = content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
-                                         .First()
-                                         .Split(',');
+                var columnNames = content.First().Split(',');
 
                 seriesDefinition = new SeriesDefinition(name, columnNames);
                 return true;

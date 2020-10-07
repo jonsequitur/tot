@@ -1,15 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using static System.Environment;
 
 namespace totlib
 {
     public abstract class DataAccessorBase : IDataAccessor
     {
-        protected DataAccessorBase(IClock clock)
+        protected DataAccessorBase(IClock clock = null)
         {
-            Clock = clock;
+            Clock = clock ?? SystemClock.Instance;
         }
 
         public IClock Clock { get; }
@@ -20,7 +19,7 @@ namespace totlib
 
         public abstract IEnumerable<string> ListSeries();
 
-        public abstract string ReadCsv(string series);
+        public abstract IEnumerable<string> ReadLines(string series);
 
         protected SeriesDefinition GetSeriesDefinitionOrThrow(string seriesName)
         {
@@ -58,7 +57,7 @@ namespace totlib
                 values = timestamp;
             }
 
-            return string.Join(",", values) + NewLine;
+            return string.Join(",", values);
         }
 
         protected string CreateCsvHeaderForSeries(IEnumerable<string> columnNames)
@@ -74,7 +73,7 @@ namespace totlib
                 columnNames = time;
             }
 
-            return string.Join(",", columnNames) + NewLine;
+            return string.Join(",", columnNames);
         }
 
         protected abstract bool TryGetSeriesDefinition(string name, out SeriesDefinition seriesDefinition);

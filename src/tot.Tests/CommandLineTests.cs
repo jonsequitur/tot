@@ -29,9 +29,9 @@ namespace tot.Tests
         {
             _parser.Invoke("add ate what howMany deliciousness");
 
-            dataAccessor.ReadCsv("ate.csv")
+            dataAccessor.ReadLines("ate.csv")
                         .Should()
-                        .Be("time,what,howMany,deliciousness" + NewLine);
+                        .BeEquivalentTo("time,what,howMany,deliciousness");
         }
 
         [Fact]
@@ -42,13 +42,13 @@ namespace tot.Tests
             _parser.Invoke("ate bananas 3");
             _parser.Invoke("ate bananas 5");
 
-            var csv = dataAccessor.ReadCsv("ate.csv");
+            var lines = dataAccessor.ReadLines("ate.csv");
 
-            csv.Should()
-               .Be($@"time,what,howMany
-{_clock.Now:s},bananas,3
-{_clock.Now:s},bananas,5
-".NormalizeLineEndings());
+            lines.Should()
+                 .BeEquivalentTo(
+                     "time,what,howMany",
+                     $"{_clock.Now:s},bananas,3",
+                     $"{_clock.Now:s},bananas,5");
         }
 
         [Fact]
@@ -64,16 +64,16 @@ namespace tot.Tests
             _parser.Invoke($"ate --time {time2:s} bananas 5");
             _parser.Invoke($"ate bananas 8 --time {time3:s} ");
 
-            var csv = dataAccessor.ReadCsv("ate.csv");
+            var lines = dataAccessor.ReadLines("ate.csv");
 
-            csv.Should()
-               .Be($@"time,what,howMany
-{time1:s},bananas,3
-{time2:s},bananas,5
-{time3:s},bananas,8
-".NormalizeLineEndings());
+            lines.Should()
+                 .BeEquivalentTo(
+                     "time,what,howMany",
+                     $"{time1:s},bananas,3",
+                     $"{time2:s},bananas,5",
+                     $"{time3:s},bananas,8");
         }
-        
+
         [Fact]
         public void Time_can_be_specified_as_a_duration_when_adding_records_to_a_series()
         {
@@ -83,18 +83,18 @@ namespace tot.Tests
             var time2 = _clock.Now.Subtract(4.Minutes());
             var time3 = _clock.Now.AddMinutes(5).AddSeconds(23);
 
-            _parser.Invoke($"--time -8h ate bananas 3");
-            _parser.Invoke($"ate --time -4m bananas 5");
-            _parser.Invoke($"ate bananas 8 --time 5m23s");
+            _parser.Invoke("--time -8h ate bananas 3");
+            _parser.Invoke("ate --time -4m bananas 5");
+            _parser.Invoke("ate bananas 8 --time 5m23s");
 
-            var csv = dataAccessor.ReadCsv("ate.csv");
+            var lines = dataAccessor.ReadLines("ate.csv");
 
-            csv.Should()
-               .Be($@"time,what,howMany
-{time1:s},bananas,3
-{time2:s},bananas,5
-{time3:s},bananas,8
-".NormalizeLineEndings());
+            lines.Should()
+                 .BeEquivalentTo(
+                     "time,what,howMany",
+                     $"{time1:s},bananas,3",
+                     $"{time2:s},bananas,5",
+                     $"{time3:s},bananas,8");
         }
 
         [Theory]
@@ -111,12 +111,12 @@ namespace tot.Tests
 
             _parser.Invoke($"x -t {timeArgument}");
 
-            var csv = dataAccessor.ReadCsv("x.csv");
+            var lines = dataAccessor.ReadLines("x.csv");
 
-            csv.Should()
-               .Be($@"time
-{expected}
-".NormalizeLineEndings());
+            lines.Should()
+                 .BeEquivalentTo(
+                     "time",
+                     expected);
         }
 
         [Fact]
@@ -130,21 +130,6 @@ namespace tot.Tests
         }
 
         [Fact]
-        public void It_can_list_defined_series()
-        {
-            _parser.Invoke("add fruit name deliciousness");
-            _parser.Invoke("add animal furriness cuteness");
-
-            _parser.Invoke("list", _console);
-
-            _console.Out
-                    .ToString()
-                    .Split(NewLine)
-                    .Should()
-                    .ContainInOrder("animal", "fruit");
-        }
-
-        [Fact]
         public void It_is_not_necessary_to_specify_columns()
         {
             var result = _parser.Invoke("add cat");
@@ -153,13 +138,26 @@ namespace tot.Tests
         }
 
         [Fact]
-        public void It_can_provide_completions_on_known_measures()
+        public void tot_can_provide_completions_on_known_series()
         {
             _parser.Invoke("add apple");
             _parser.Invoke("add banana");
             _parser.Invoke("add cherry");
 
             _parser.Parse("")
+                   .GetSuggestions()
+                   .Should()
+                   .Contain(new[] { "apple", "banana", "cherry" });
+        }
+
+        [Fact]
+        public void tot_list_can_provide_completions_on_known_series()
+        {
+            _parser.Invoke("add apple");
+            _parser.Invoke("add banana");
+            _parser.Invoke("add cherry");
+
+            _parser.Parse("list ")
                    .GetSuggestions()
                    .Should()
                    .Contain(new[] { "apple", "banana", "cherry" });
@@ -212,6 +210,112 @@ namespace tot.Tests
             result.Should().Be(1);
 
             console.Error.ToString().Should().Be("Too few values specified. Series \"series\" expects values for: one,two" + NewLine);
+        }
+
+        [Fact]
+        public void It_can_list_defined_series()
+        {
+            _parser.Invoke("add fruit name deliciousness");
+            _parser.Invoke("add animal furriness cuteness");
+
+            _parser.Invoke("list", _console);
+
+            _console.Out
+                    .ToString()
+                    .Split(NewLine)
+                    .Should()
+                    .BeEquivalentTo("animal", "fruit");
+        }
+
+        [Fact]
+        public void It_can_list_the_contents_of_a_series()
+        {
+            _parser.Invoke("add fruit name deliciousness");
+            _parser.Invoke("fruit apple 3");
+            _parser.Invoke("fruit banana 19");
+            _parser.Invoke("fruit cherry 2000");
+
+            _parser.Invoke("list fruit", _console);
+
+            _console.Out
+                    .ToString()
+                    .Split(NewLine)
+                    .Should()
+                    .BeEquivalentTo(
+                        $"{_clock.Now:s},apple,3",
+                        $"{_clock.Now:s},banana,19",
+                        $"{_clock.Now:s},cherry,2000",
+                        "");
+        }
+
+        [Fact]
+        public void Listed_series_contents_can_be_filtered_by_day()
+        {
+            _parser.Invoke("add fruit name deliciousness");
+            _parser.Invoke("fruit apple 3 -t \"2020-10-04 3pm\"");
+            _parser.Invoke("fruit banana 19 -t \"2020-10-05 3pm\"");
+            _parser.Invoke("fruit cherry 2000 -t \"2020-10-06\"");
+            _parser.Invoke("fruit durian 89 -t \"2020-10-06 3pm\"");
+
+            _parser.Invoke("list fruit -t \"2020-10-05\"", _console);
+
+            _console.Out
+                    .ToString()
+                    .Split(NewLine)
+                    .Should()
+                    .BeEquivalentTo(
+                        "2020-10-05T15:00:00,banana,19",
+                        "");
+        }
+
+        [Fact]
+        public void Filtered_series_items_are_returned_in_chronological_order()
+        {
+            _parser.Invoke("add things");
+            _parser.Invoke("things -t \"2020-10-06\"");
+            _parser.Invoke("things -t \"2020-10-04 3pm\"");
+            _parser.Invoke("things -t \"2020-10-04 1pm\"");
+
+            _parser.Invoke("list things -t \"2020-10-04\"", _console);
+
+            _console.Out
+                    .ToString()
+                    .Split(NewLine)
+                    .Should()
+                    .BeEquivalentTo(
+                        new[]
+                        {
+                            "2020-10-04T13:00:00",
+                            "2020-10-04T15:00:00",
+                            ""
+                        },
+                        config: c => c.WithStrictOrdering());
+        }
+
+        [Fact]
+        public void Listed_series_contents_can_be_filtered_by_previous_time_period()
+        {
+            _clock.AdvanceTo(DateTime.Parse("2020-10-05"));
+
+            _parser.Invoke("add things");
+            _parser.Invoke("things -t \"2020-10-03\"");
+            _parser.Invoke("things -t \"2020-10-04 3pm\"");
+            _parser.Invoke("things -t \"2020-10-04 1pm\"");
+
+            _parser.Invoke("list things -t -1d", _console);
+
+            _console.Out
+                    .ToString()
+                    .Split(NewLine)
+                    .Should()
+                    .BeEquivalentTo(
+                        new[]
+                        {
+                            "2020-10-04T13:00:00",
+                            "2020-10-04T15:00:00",
+                            ""
+                        },
+                        config: c => c.WithStrictOrdering());
         }
     }
 }

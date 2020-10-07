@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using FluentAssertions;
 using FluentAssertions.Extensions;
 using totlib;
@@ -19,9 +20,9 @@ namespace tot.Tests
 
             dataAccessor.CreateSeries("somefile.csv", "hello");
 
-            dataAccessor.ReadCsv("somefile.csv")
+            dataAccessor.ReadLines("somefile.csv")
                         .Should()
-                        .Be("time,hello" + Environment.NewLine);
+                        .BeEquivalentTo("time,hello");
         }
 
         [Fact]
@@ -37,12 +38,12 @@ namespace tot.Tests
             var secondTimeEntry = Clock.Now;
             dataAccessor.AppendValues("series", "11", "22", "33");
 
-            dataAccessor.ReadCsv("series")
+            dataAccessor.ReadLines("series")
                         .Should()
-                        .Be($@"time,one,two,three
-{firstTimeEntry:s},1,2,3
-{secondTimeEntry:s},11,22,33
-".NormalizeLineEndings());
+                        .BeEquivalentTo(
+                            "time,one,two,three",
+                            $"{firstTimeEntry:s},1,2,3",
+                            $"{secondTimeEntry:s},11,22,33");
         }
 
         [Fact]
@@ -114,7 +115,7 @@ namespace tot.Tests
         [Fact]
         public void Reading_a_nonexistent_series_throws()
         {
-            Action read = () => GetConfiguration().ReadCsv("nonexistent.csv");
+            Action read = () => GetConfiguration().ReadLines("nonexistent.csv").ToArray();
 
             read
                 .Should()
@@ -132,7 +133,9 @@ namespace tot.Tests
 
             configuration.CreateSeries("things");
 
-            configuration.ReadCsv("things").Should().Be("time" + Environment.NewLine);
+            configuration.ReadLines("things")
+                         .Should()
+                         .BeEquivalentTo("time");
         }
 
         [Fact]
@@ -144,9 +147,11 @@ namespace tot.Tests
 
             configuration.AppendValues("things");
 
-            configuration.ReadCsv("things").Should().Be($@"time
-{Clock.Now:s}
-".NormalizeLineEndings());
+            configuration.ReadLines("things")
+                         .Should()
+                         .BeEquivalentTo(
+                             "time",
+                             Clock.Now.ToString("s"));
         }
 
         [Fact]
@@ -156,7 +161,7 @@ namespace tot.Tests
 
             configuration.CreateSeries("stuff", "value");
 
-          Action append =()=>  configuration.AppendValues("stuff", "one,two");
+          Action append = () =>  configuration.AppendValues("stuff", "one,two");
 
           append.Should()
                 .Throw<TotException>()
@@ -173,7 +178,7 @@ namespace tot.Tests
 
             configuration.CreateSeries("stuff", "value");
 
-          Action append =()=>  configuration.AppendValues("stuff", "one\ntwo");
+          Action append = () =>  configuration.AppendValues("stuff", "one\ntwo");
 
           append.Should()
                 .Throw<TotException>()

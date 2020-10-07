@@ -1,4 +1,6 @@
-﻿namespace totlib
+﻿using System;
+
+namespace totlib
 {
     public static class DataAccessor
     {
