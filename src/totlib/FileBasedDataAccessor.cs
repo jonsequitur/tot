@@ -2,14 +2,20 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using static System.Environment;
+using static System.IO.Directory;
 
 namespace totlib
 {
     public class FileBasedDataAccessor : DataAccessorBase
     {
-        public FileBasedDataAccessor(DirectoryInfo directory, IClock clock) : base(clock)
+        public FileBasedDataAccessor(DirectoryInfo directory = null, IClock clock = null) : base(clock)
         {
-            if (!directory.Exists)
+            if (directory is null)
+            {
+                directory = new DirectoryInfo(GetCurrentDirectory());
+            }
+            else if (!directory.Exists)
             {
                 throw new ArgumentException($"Directory does not exist: {directory}");
             }
@@ -27,7 +33,7 @@ namespace totlib
 
             var fullPath = Path.Combine(Directory.FullName, seriesDefinition.Path);
 
-            File.AppendAllText(fullPath, CreateTimeStampedCsvLine(time, values));
+            File.AppendAllText(fullPath, CreateTimeStampedCsvLine(time, values) + NewLine);
         }
 
         public override void CreateSeries(string seriesName, string[] columnNames)
@@ -38,29 +44,45 @@ namespace totlib
 
             var fullPath = Path.Combine(Directory.FullName, SeriesDefinition.GetPath(seriesName));
 
-            File.AppendAllText(fullPath, CreateCsvHeaderForSeries(columnNames));
+            File.AppendAllText(fullPath, CreateCsvHeaderForSeries(columnNames) + NewLine);
         }
 
         public override IEnumerable<string> ListSeries() =>
             Directory.EnumerateFiles("*.csv")
                      .Select(f => Path.GetFileNameWithoutExtension(f.Name));
 
-        public override string ReadCsv(string series)
+        public override IEnumerable<string> ReadLines(string series)
         {
-            var definition = GetSeriesDefinitionOrThrow(series);
+            IEnumerator<string> enumerator;
 
-            var fullPath = Path.Combine(Directory.FullName, definition.Path);
+            try
+            {
+                enumerator = File.ReadLines(GetFullPathForSeries(series)).GetEnumerator();
+            }
+            catch (FileNotFoundException)
+            {
+                throw new TotException($"Series \"{series}\" hasn't been defined. Use tot add to define it.");
+            }
 
-            return File.ReadAllText(fullPath);
+            using (enumerator)
+            {
+                while (enumerator.MoveNext())
+                {
+                    var line = enumerator.Current;
+
+                    if (!string.IsNullOrEmpty(line))
+                    {
+                        yield return line;
+                    }
+                }
+            }
         }
 
         protected override bool TryGetSeriesDefinition(string name, out SeriesDefinition seriesDefinition)
         {
-            var fullPath = Path.Combine(Directory.FullName, SeriesDefinition.GetPath(name));
-
-            if (File.Exists(fullPath))
+            if (File.Exists(GetFullPathForSeries(name)))
             {
-                var columnNames = File.ReadLines(fullPath).First().Split(',');
+                var columnNames = ReadLines(name).First().Split(',');
 
                 seriesDefinition = new SeriesDefinition(name, columnNames);
                 return true;
@@ -70,6 +92,11 @@ namespace totlib
                 seriesDefinition = default;
                 return false;
             }
+        }
+
+        private string GetFullPathForSeries(string name)
+        {
+            return Path.Combine(Directory.FullName, SeriesDefinition.GetPath(name));
         }
     }
 }

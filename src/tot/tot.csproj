@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <PackageReference Include="humanizer" Version="2.8.26" />
-    <PackageReference Include="System.CommandLine" Version="2.0.0-beta1.20468.1" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta1.20478.1" />
     <PackageReference Include="TimeSpanParserUtil" Version="1.2.0" />
   </ItemGroup>
 
