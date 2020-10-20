@@ -249,34 +249,40 @@ namespace tot.Tests
         }
 
         [Fact]
-        public void Listed_series_contents_can_be_filtered_by_day()
-        {
-            _parser.Invoke("add fruit name deliciousness");
-            _parser.Invoke("fruit apple 3 -t \"2020-10-04 3pm\"");
-            _parser.Invoke("fruit banana 19 -t \"2020-10-05 3pm\"");
-            _parser.Invoke("fruit cherry 2000 -t \"2020-10-06\"");
-            _parser.Invoke("fruit durian 89 -t \"2020-10-06 3pm\"");
-
-            _parser.Invoke("list fruit -t \"2020-10-05\"", _console);
-
-            _console.Out
-                    .ToString()
-                    .Split(NewLine)
-                    .Should()
-                    .BeEquivalentTo(
-                        "2020-10-05T15:00:00,banana,19",
-                        "");
-        }
-
-        [Fact]
-        public void Filtered_series_items_are_returned_in_chronological_order()
+        public void Listed_series_items_are_returned_in_chronological_order_when_not_filtered()
         {
             _parser.Invoke("add things");
             _parser.Invoke("things -t \"2020-10-06\"");
             _parser.Invoke("things -t \"2020-10-04 3pm\"");
             _parser.Invoke("things -t \"2020-10-04 1pm\"");
 
-            _parser.Invoke("list things -t \"2020-10-04\"", _console);
+            _parser.Invoke("list things", _console);
+
+            _console.Out
+                    .ToString()
+                    .Split(NewLine)
+                    .Should()
+                    .BeEquivalentTo(
+                        new[]
+                        {
+                            "2020-10-04T13:00:00",
+                            "2020-10-04T15:00:00",
+                            "2020-10-06T00:00:00",
+                            ""
+                        },
+                        config: c => c.WithStrictOrdering());
+        }
+
+
+        [Fact]
+        public void Listed_series_items_are_returned_in_chronological_order_when_filtered()
+        {
+            _parser.Invoke("add things");
+            _parser.Invoke("things -t \"2020-10-06\"");
+            _parser.Invoke("things -t \"2020-10-04 3pm\"");
+            _parser.Invoke("things -t \"2020-10-04 1pm\"");
+
+            _parser.Invoke("list things --after \"2020-10-04\"", _console);
 
             _console.Out
                     .ToString()
@@ -293,7 +299,27 @@ namespace tot.Tests
         }
 
         [Fact]
-        public void Listed_series_contents_can_be_filtered_by_previous_time_period()
+        public void Listed_series_contents_can_be_filtered_to_a_specific_day()
+        {
+            _parser.Invoke("add fruit name deliciousness");
+            _parser.Invoke("fruit apple 3 -t \"2020-10-04 3pm\"");
+            _parser.Invoke("fruit banana 19 -t \"2020-10-05 3pm\"");
+            _parser.Invoke("fruit cherry 2000 -t \"2020-10-06\"");
+            _parser.Invoke("fruit durian 89 -t \"2020-10-06 3pm\"");
+
+            _parser.Invoke("list fruit --after \"2020-10-05\"", _console);
+
+            _console.Out
+                    .ToString()
+                    .Split(NewLine)
+                    .Should()
+                    .BeEquivalentTo(
+                        "2020-10-05T15:00:00,banana,19",
+                        "");
+        }
+
+        [Fact]
+        public void Listed_series_contents_can_be_filtered_to_after_a_specified_time()
         {
             _clock.AdvanceTo(DateTime.Parse("2020-10-05"));
 
@@ -302,7 +328,7 @@ namespace tot.Tests
             _parser.Invoke("things -t \"2020-10-04 3pm\"");
             _parser.Invoke("things -t \"2020-10-04 1pm\"");
 
-            _parser.Invoke("list things -t -1d", _console);
+            _parser.Invoke("list things --after -1d", _console);
 
             _console.Out
                     .ToString()
@@ -313,6 +339,32 @@ namespace tot.Tests
                         {
                             "2020-10-04T13:00:00",
                             "2020-10-04T15:00:00",
+                            ""
+                        },
+                        config: c => c.WithStrictOrdering());
+        }
+
+        [Fact]
+        public void Unique_days_on_which_series_entries_occurred_can_be_listed()
+        {
+            _clock.AdvanceTo(DateTime.Parse("2020-10-05"));
+
+            _parser.Invoke("add things one two");
+            _parser.Invoke("things -t \"2020-10-03 12:31am\" 1 2");
+            _parser.Invoke("things -t \"2020-10-04 3pm\" 3 4");
+            _parser.Invoke("things -t \"2020-10-04 1pm\" 5 6");
+
+            _parser.Invoke("list things --days", _console);
+
+            _console.Out
+                    .ToString()
+                    .Split(NewLine)
+                    .Should()
+                    .BeEquivalentTo(
+                        new[]
+                        {
+                            "2020-10-03T00:00:00",
+                            "2020-10-04T00:00:00",
                             ""
                         },
                         config: c => c.WithStrictOrdering());

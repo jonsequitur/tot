@@ -23,17 +23,15 @@ namespace tot
                 description: "The path containing the time series",
                 getDefaultValue: () => new DirectoryInfo(Directory.GetCurrentDirectory()));
 
-            var timeOption = new Option<DateTime?>(
-                new[] { "-t", "--time" },
-                description: "The time to record with the event",
-                parseArgument: ParseTimeOrDuration(GetDataAccessor),
-                isDefault: true);
-
             var rootCommand = new RootCommand("tot")
             {
                 AddCommand(),
                 ListCommand(),
-                timeOption,
+                new Option<DateTime?>(
+                    new[] { "-t", "--time" },
+                    description: "The time of the event, either as a date (-t \"2020-08-12 3pm\") or as a relative time period (-t -45m)",
+                    parseArgument: ParseTimeOrDuration(GetDataAccessor),
+                    isDefault: true),
                 new Argument<string>("series").AddSuggestions(SuggestSeriesName),
                 new Argument<IEnumerable<string>>("values")
             };
@@ -73,10 +71,15 @@ namespace tot
                     {
                         Arity = ArgumentArity.ZeroOrOne
                     }.AddSuggestions(SuggestSeriesName),
-                    timeOption
+                    new Option<DateTime?>(
+                        new[] { "-a", "--after" },
+                        description: "The start time after which to list events, either as a date (-a \"2020-08-12 3pm\") or as a relative time period (-a -45m)",
+                        parseArgument: ParseTimeOrDuration(GetDataAccessor),
+                        isDefault: true), 
+                    new Option<bool>("--days", "List only unique days on which events occurred")
                 };
 
-                command.Handler = CommandHandler.Create<DirectoryInfo, string, DateTime?, IConsole>((path, series, time, console) =>
+                command.Handler = CommandHandler.Create<DirectoryInfo, string, DateTime?, IConsole, bool>((path, series, after, console, days) =>
                 {
                     if (string.IsNullOrEmpty(series))
                     {
@@ -90,33 +93,45 @@ namespace tot
                     else
                     {
                         // list the contents of the specified series
-                        var readLines = GetDataAccessor(path)
-                                        .ReadLines(series)
-                                        .Skip(1); // skip the heading row
+                        IEnumerable<(DateTime timestamp, string line)> readLines =
+                            GetDataAccessor(path)
+                                .ReadLines(series) // skip the heading row
+                                .Skip(1)
+                                .Select(line =>
+                                {
+                                    var timestampString = line.Split(',')[0];
 
-                        if (time is {} specified)
+                                    var timestamp = DateTime.Parse(timestampString);
+
+                                    return (timestamp, line);
+                                });
+
+                        readLines = readLines.OrderBy(t => t.timestamp);
+
+                        if (after is {} specified)
                         {
-                            var specificDay = specified.Date == time;
+                            var specificDay = specified.Date == after;
 
                             readLines = readLines
-                                        .Select(line =>
-                                        {
-                                            var timestampString = line.Split(',')[0];
-
-                                            var timestamp = DateTime.Parse(timestampString);
-
-                                            return (timestamp, line);
-                                        })
-                                        .Where(t => specificDay 
-                                                        ? t.timestamp.Date == specified 
-                                                        : t.timestamp >= specified)
-                                        .OrderBy(t => t.timestamp)
-                                        .Select(t => t.line);
+                                .Where(t => specificDay
+                                                ? t.timestamp.Date == specified
+                                                : t.timestamp >= specified);
                         }
 
-                        var lines = string.Join(Environment.NewLine, readLines);
+                        IEnumerable<string> lines;
 
-                        console.Out.WriteLine(lines);
+                        if (days)
+                        {
+                            lines = readLines.Select(l => l.timestamp.Date)
+                                             .Distinct()
+                                             .Select(t => t.ToString("s"));
+                        }
+                        else
+                        {
+                            lines = readLines.Select(l => l.line);
+                        }
+
+                        console.Out.WriteLine(string.Join(Environment.NewLine, lines));
                     }
                 });
 
