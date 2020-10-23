@@ -369,5 +369,36 @@ namespace tot.Tests
                         },
                         config: c => c.WithStrictOrdering());
         }
+
+        [Fact]
+        public void Latest_shows_the_most_recent_entries_in_each_series()
+        {
+            _parser.Invoke("add one");
+            _parser.Invoke("one -t 2020-10-25");
+            _parser.Invoke("one -t 2020-10-26");
+            _parser.Invoke("one -t 2020-10-24");
+            _parser.Invoke("one -t 2020-10-23");
+
+            _parser.Invoke("add two col1 col2");
+            _parser.Invoke("two a b -t 2020-10-08");
+            _parser.Invoke("two c d -t 2020-10-08");
+
+            _parser.Invoke("latest", _console);
+
+            _console.Out
+                    .ToString()
+                    .Split(NewLine)
+                    .Should()
+                    .BeEquivalentTo(
+                        new[]
+                        {
+                            "two:",
+                            "    2020-10-08T00:00:00,c,d",
+                            "one:",
+                            "    2020-10-26T00:00:00",
+                            ""
+                        },
+                        config: c => c.WithStrictOrdering());
+        }
     }
 }
