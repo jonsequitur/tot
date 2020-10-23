@@ -27,6 +27,7 @@ namespace tot
             {
                 AddCommand(),
                 ListCommand(),
+                LatestCommand(),
                 new Option<DateTime?>(
                     new[] { "-t", "--time" },
                     description: "The time of the event, either as a date (-t \"2020-08-12 3pm\") or as a relative time period (-t -45m)",
@@ -63,6 +64,29 @@ namespace tot
                 return command;
             }
 
+            Command LatestCommand()
+            {
+                var command = new Command("latest", "Lists the latest entries in each series");
+
+                command.Handler = CommandHandler.Create<DirectoryInfo, IConsole>(
+                    (path, console) =>
+                    {
+                        var dataAccessor = GetDataAccessor(path);
+
+                        foreach (var x in dataAccessor
+                                          .ListSeries()
+                                          .Select(name => (name, data: dataAccessor.ReadSeriesData(name).LastOrDefault()))
+                                          .Where(t => t.data is {})
+                                          .OrderBy(t => t.data.Timestamp))
+                        {
+                            console.Out.WriteLine($"{x.name}:");
+                            console.Out.WriteLine($"    {x.data.Line}");
+                        }
+                    });
+
+                return command;
+            }
+
             Command ListCommand()
             {
                 var command = new Command("list", "Lists the defined series")
@@ -81,10 +105,12 @@ namespace tot
 
                 command.Handler = CommandHandler.Create<DirectoryInfo, string, DateTime?, IConsole, bool>((path, series, after, console, days) =>
                 {
+                    var accessor = GetDataAccessor(path);
+
                     if (string.IsNullOrEmpty(series))
                     {
                         // list the known series names
-                        var seriesNames = GetDataAccessor(path).ListSeries().OrderBy(s => s);
+                        var seriesNames = accessor.ListSeries().OrderBy(s => s);
 
                         console.Out.Write(
                             string.Join(
@@ -92,21 +118,7 @@ namespace tot
                     }
                     else
                     {
-                        // list the contents of the specified series
-                        IEnumerable<(DateTime timestamp, string line)> readLines =
-                            GetDataAccessor(path)
-                                .ReadLines(series) // skip the heading row
-                                .Skip(1)
-                                .Select(line =>
-                                {
-                                    var timestampString = line.Split(',')[0];
-
-                                    var timestamp = DateTime.Parse(timestampString);
-
-                                    return (timestamp, line);
-                                });
-
-                        readLines = readLines.OrderBy(t => t.timestamp);
+                        var readLines = accessor.ReadSeriesData(series);
 
                         if (after is {} specified)
                         {
@@ -114,24 +126,27 @@ namespace tot
 
                             readLines = readLines
                                 .Where(t => specificDay
-                                                ? t.timestamp.Date == specified
-                                                : t.timestamp >= specified);
+                                                ? t.Timestamp.Date == specified
+                                                : t.Timestamp >= specified);
                         }
 
                         IEnumerable<string> lines;
 
                         if (days)
                         {
-                            lines = readLines.Select(l => l.timestamp.Date)
+                            lines = readLines.Select(l => l.Timestamp.Date)
                                              .Distinct()
                                              .Select(t => t.ToString("s"));
                         }
                         else
                         {
-                            lines = readLines.Select(l => l.line);
+                            lines = readLines.Select(l => l.Line);
                         }
 
-                        console.Out.WriteLine(string.Join(Environment.NewLine, lines));
+                        foreach (var line in lines)
+                        {
+                            console.Out.WriteLine(line);
+                        }
                     }
                 });
 
