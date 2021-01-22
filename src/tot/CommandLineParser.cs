@@ -58,8 +58,9 @@ namespace tot
                     new Argument<IEnumerable<string>>("columns")
                 };
 
-                command.Handler = CommandHandler.Create<string, string[], DirectoryInfo>(async (name, columns, path) =>
-                                                                                             GetDataAccessor(path).CreateSeries(name, columns));
+                command.Handler = CommandHandler.Create<string, string[], DirectoryInfo>(
+                    (name, columns, path) =>
+                        GetDataAccessor(path).CreateSeries(name, columns));
 
                 return command;
             }
