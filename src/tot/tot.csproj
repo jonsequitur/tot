@@ -16,7 +16,8 @@
 
   <ItemGroup>
     <PackageReference Include="humanizer" Version="2.8.26" />
-    <PackageReference Include="System.CommandLine" Version="2.0.0-beta1.20513.2" />
+    <PackageReference Include="Spectre.Console" Version="0.31.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta1.21065.2" />
     <PackageReference Include="TimeSpanParserUtil" Version="1.2.0" />
   </ItemGroup>
 
