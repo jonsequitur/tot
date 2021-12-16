@@ -1,6 +1,7 @@
 using System;
 using System.CommandLine.IO;
 using System.CommandLine.Parsing;
+using System.Linq;
 using FluentAssertions;
 using FluentAssertions.Extensions;
 using totlib;
@@ -145,7 +146,8 @@ namespace tot.Tests
             _parser.Invoke("add cherry");
 
             _parser.Parse("")
-                   .GetSuggestions()
+                   .GetCompletions()
+                   .Select(c => c.Label)
                    .Should()
                    .Contain(new[] { "apple", "banana", "cherry" });
         }
@@ -158,7 +160,8 @@ namespace tot.Tests
             _parser.Invoke("add cherry");
 
             _parser.Parse("list ")
-                   .GetSuggestions()
+                   .GetCompletions()
+                   .Select(c => c.Label)
                    .Should()
                    .Contain(new[] { "apple", "banana", "cherry" });
         }

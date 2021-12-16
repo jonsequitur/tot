@@ -11,7 +11,7 @@ namespace totlib
         {
         }
 
-        public Dictionary<string, List<string>> Files { get; } = new Dictionary<string, List<string>>();
+        public Dictionary<string, List<string>> Files { get; } = new();
 
         public override void AppendValues(string seriesName, DateTime time, string[] values)
         {

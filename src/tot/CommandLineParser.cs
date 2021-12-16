@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Builder;
-using System.CommandLine.Invocation;
+using System.CommandLine.Completions;
 using System.CommandLine.IO;
 using System.CommandLine.Parsing;
 using System.Globalization;
 using System.IO;
-using Humanizer;
 using System.Linq;
+using Humanizer;
 using TimeSpanParserUtil;
 using totlib;
 
@@ -23,23 +23,29 @@ namespace tot
                 description: "The path containing the time series",
                 getDefaultValue: () => new DirectoryInfo(Directory.GetCurrentDirectory()));
 
+            var timeOption = new Option<DateTime?>(
+                new[] { "-t", "--time" },
+                description: "The time of the event, either as a date (-t \"2020-08-12 3pm\") or as a relative time period (-t -45m)",
+                parseArgument: ParseTimeOrDuration(GetDataAccessor),
+                isDefault: true);
+
+            var seriesArg = new Argument<string>("series").AddCompletions(SuggestSeriesName);
+
+            var valuesArg = new Argument<string[]>("values");
+
             var rootCommand = new RootCommand("tot")
             {
                 AddCommand(),
                 ListCommand(),
                 LatestCommand(),
-                new Option<DateTime?>(
-                    new[] { "-t", "--time" },
-                    description: "The time of the event, either as a date (-t \"2020-08-12 3pm\") or as a relative time period (-t -45m)",
-                    parseArgument: ParseTimeOrDuration(GetDataAccessor),
-                    isDefault: true),
-                new Argument<string>("series").AddSuggestions(SuggestSeriesName),
-                new Argument<IEnumerable<string>>("values")
+                timeOption,
+                seriesArg,
+                valuesArg
             };
 
             rootCommand.AddGlobalOption(pathOption);
 
-            rootCommand.Handler = CommandHandler.Create<string, string[], DateTime?, DirectoryInfo, IConsole>((series, values, time, path, console) =>
+            rootCommand.SetHandler((string series, string[] values, DateTime? time, DirectoryInfo path, IConsole console) =>
             {
                 var accessor = GetDataAccessor(path);
 
@@ -48,19 +54,24 @@ namespace tot
                 accessor.AppendValues(series, time.Value, values);
 
                 console.Out.WriteLine($"{time.Humanize(utcDate: false)}: {series} {string.Join(" ", values ?? Array.Empty<string>())}");
-            });
+            }, seriesArg, valuesArg, timeOption, pathOption);
 
             Command AddCommand()
             {
+                var nameArg = new Argument<string>("name");
+
+                var columnsArg = new Argument<string[]>("columns");
+
                 var command = new Command("add", "Adds a new series")
                 {
-                    new Argument<string>("name"),
-                    new Argument<IEnumerable<string>>("columns")
+                    nameArg,
+                    columnsArg
                 };
 
-                command.Handler = CommandHandler.Create<string, string[], DirectoryInfo>(
+                command.SetHandler<string, string[], DirectoryInfo>(
                     (name, columns, path) =>
-                        GetDataAccessor(path).CreateSeries(name, columns));
+                        GetDataAccessor(path).CreateSeries(name, columns),
+                    nameArg, columnsArg, pathOption);
 
                 return command;
             }
@@ -69,42 +80,48 @@ namespace tot
             {
                 var command = new Command("latest", "Lists the latest entries in each series");
 
-                command.Handler = CommandHandler.Create<DirectoryInfo, IConsole>(
-                    (path, console) =>
+                command.SetHandler(
+                    (DirectoryInfo path, IConsole console) =>
                     {
                         var dataAccessor = GetDataAccessor(path);
 
                         foreach (var x in dataAccessor
                                           .ListSeries()
                                           .Select(name => (name, data: dataAccessor.ReadSeriesData(name).LastOrDefault()))
-                                          .Where(t => t.data is {})
+                                          .Where(t => t.data is { })
                                           .OrderBy(t => t.data.Timestamp))
                         {
                             console.Out.WriteLine($"{x.name}:");
                             console.Out.WriteLine($"    {x.data.Line}");
                         }
-                    });
+                    }, pathOption);
 
                 return command;
             }
 
             Command ListCommand()
             {
+                var seriesArg = new Argument<string>("series")
+                {
+                    Arity = ArgumentArity.ZeroOrOne
+                }.AddCompletions(SuggestSeriesName);
+
+                var afterOption = new Option<DateTime?>(
+                    new[] { "-a", "--after" },
+                    description: "The start time after which to list events, either as a date (-a \"2020-08-12 3pm\") or as a relative time period (-a -45m)",
+                    parseArgument: ParseTimeOrDuration(GetDataAccessor),
+                    isDefault: true);
+
+                var daysOption = new Option<bool>("--days", "List only unique days on which events occurred");
+
                 var command = new Command("list", "Lists the defined series")
                 {
-                    new Argument<string>("series")
-                    {
-                        Arity = ArgumentArity.ZeroOrOne
-                    }.AddSuggestions(SuggestSeriesName),
-                    new Option<DateTime?>(
-                        new[] { "-a", "--after" },
-                        description: "The start time after which to list events, either as a date (-a \"2020-08-12 3pm\") or as a relative time period (-a -45m)",
-                        parseArgument: ParseTimeOrDuration(GetDataAccessor),
-                        isDefault: true), 
-                    new Option<bool>("--days", "List only unique days on which events occurred")
+                    seriesArg,
+                    afterOption,
+                    daysOption
                 };
 
-                command.Handler = CommandHandler.Create<DirectoryInfo, string, DateTime?, IConsole, bool>((path, series, after, console, days) =>
+                command.SetHandler((DirectoryInfo path, string series, DateTime? after, IConsole console, bool days) =>
                 {
                     var accessor = GetDataAccessor(path);
 
@@ -121,7 +138,7 @@ namespace tot
                     {
                         var readLines = accessor.ReadSeriesData(series);
 
-                        if (after is {} specified)
+                        if (after is { } specified)
                         {
                             var specificDay = specified.Date == after;
 
@@ -149,7 +166,7 @@ namespace tot
                             console.Out.WriteLine(line);
                         }
                     }
-                });
+                }, pathOption, seriesArg, afterOption, daysOption);
 
                 return command;
             }
@@ -160,14 +177,9 @@ namespace tot
 
             return builder.Build();
 
-            IEnumerable<string> SuggestSeriesName(ParseResult result, string match)
+            IEnumerable<string> SuggestSeriesName(CompletionContext ctx)
             {
-                if (result == null)
-                {
-                    return Array.Empty<string>();
-                }
-
-                var path = result.ValueForOption(pathOption);
+                var path = ctx.ParseResult.GetValueForOption(pathOption);
 
                 var accessor = GetDataAccessor(path);
 
@@ -228,7 +240,7 @@ namespace tot
         {
             var result = argumentResult.FindResultFor(argument);
 
-            if (result is {})
+            if (result is { })
             {
                 return result.GetValueOrDefault<T>();
             }
@@ -242,7 +254,7 @@ namespace tot
         {
             var result = optionResult.FindResultFor(option);
 
-            if (result is {})
+            if (result is { })
             {
                 return result.GetValueOrDefault<T>();
             }
