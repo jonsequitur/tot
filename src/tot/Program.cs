@@ -19,7 +19,7 @@ namespace tot
         public static Parser CommandLineParser { get; } = tot.CommandLineParser.Create();
 
         public static CommandLineBuilder DisplayException(this CommandLineBuilder builder) =>
-            builder.UseMiddleware(async (context, next) =>
+            builder.AddMiddleware(async (context, next) =>
             {
                 try
                 {

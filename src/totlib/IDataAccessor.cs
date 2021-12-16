@@ -5,7 +5,7 @@ namespace totlib
 {
     public interface IDataAccessor
     {
-        public abstract IEnumerable<string> ReadLines(string series);
+        public IEnumerable<string> ReadLines(string series);
 
         void AppendValues(string seriesName, DateTime time, string[] values);
 
