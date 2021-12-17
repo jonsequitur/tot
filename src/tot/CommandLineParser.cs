@@ -193,8 +193,8 @@ namespace tot
             {
                 return result =>
                 {
-                    var token = result.Tokens.SingleOrDefault()?.Value;
-
+                    var token = result.Tokens.SingleOrDefault().Value;
+                    
                     var path = result.FindValueForOption(pathOption);
 
                     var now = (getDataAccessor(path)?.Clock ?? SystemClock.Instance).Now;
