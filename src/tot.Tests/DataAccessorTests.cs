@@ -5,223 +5,222 @@ using FluentAssertions.Extensions;
 using totlib;
 using Xunit;
 
-namespace tot.Tests
+namespace tot.Tests;
+
+public abstract class DataAccessorTests
 {
-    public abstract class DataAccessorTests
+    protected abstract IDataAccessor GetConfiguration();
+
+    protected TestClock Clock { get; } = new TestClock();
+
+    [Fact]
+    public void When_a_series_is_defined_then_the_file_is_created()
     {
-        protected abstract IDataAccessor GetConfiguration();
+        var dataAccessor = GetConfiguration();
 
-        protected TestClock Clock { get; } = new TestClock();
+        dataAccessor.CreateSeries("somefile.csv", "hello");
 
-        [Fact]
-        public void When_a_series_is_defined_then_the_file_is_created()
-        {
-            var dataAccessor = GetConfiguration();
+        dataAccessor.ReadLines("somefile.csv")
+                    .Should()
+                    .BeEquivalentTo("time,hello");
+    }
 
-            dataAccessor.CreateSeries("somefile.csv", "hello");
+    [Fact]
+    public void When_a_series_is_appended_then_the_file_contains_the_appended_values()
+    {
+        var dataAccessor = GetConfiguration();
 
-            dataAccessor.ReadLines("somefile.csv")
-                        .Should()
-                        .BeEquivalentTo("time,hello");
-        }
+        dataAccessor.CreateSeries("series", "one", "two", "three");
 
-        [Fact]
-        public void When_a_series_is_appended_then_the_file_contains_the_appended_values()
-        {
-            var dataAccessor = GetConfiguration();
+        dataAccessor.AppendValues("series", "1", "2", "3");
+        var firstTimeEntry = Clock.Now;
+        Clock.AdvanceBy(1.Seconds());
+        var secondTimeEntry = Clock.Now;
+        dataAccessor.AppendValues("series", "11", "22", "33");
 
-            dataAccessor.CreateSeries("series", "one", "two", "three");
+        dataAccessor.ReadLines("series")
+                    .Should()
+                    .BeEquivalentTo(
+                        "time,one,two,three",
+                        $"{firstTimeEntry:s},1,2,3",
+                        $"{secondTimeEntry:s},11,22,33");
+    }
 
-            dataAccessor.AppendValues("series", "1", "2", "3");
-            var firstTimeEntry = Clock.Now;
-            Clock.AdvanceBy(1.Seconds());
-            var secondTimeEntry = Clock.Now;
-            dataAccessor.AppendValues("series", "11", "22", "33");
+    [Fact]
+    public void It_can_list_defined_series()
+    {
+        var dataAccessor = GetConfiguration();
 
-            dataAccessor.ReadLines("series")
-                        .Should()
-                        .BeEquivalentTo(
-                            "time,one,two,three",
-                            $"{firstTimeEntry:s},1,2,3",
-                            $"{secondTimeEntry:s},11,22,33");
-        }
+        dataAccessor.CreateSeries("series1", "one");
+        dataAccessor.CreateSeries("series2", "one", "two");
+        dataAccessor.CreateSeries("series3", "one", "two", "three");
 
-        [Fact]
-        public void It_can_list_defined_series()
-        {
-            var dataAccessor = GetConfiguration();
+        dataAccessor.ListSeries()
+                    .Should()
+                    .BeEquivalentTo("series1",
+                                    "series2",
+                                    "series3");
+    }
 
-            dataAccessor.CreateSeries("series1", "one");
-            dataAccessor.CreateSeries("series2", "one", "two");
-            dataAccessor.CreateSeries("series3", "one", "two", "three");
+    [Fact]
+    public void It_throws_if_attempting_to_an_append_to_an_undefined_series()
+    {
+        var dataAccessor = GetConfiguration();
 
-            dataAccessor.ListSeries()
-                        .Should()
-                        .BeEquivalentTo("series1",
-                                        "series2",
-                                        "series3");
-        }
+        Action append = () =>
+            dataAccessor.AppendValues("nope");
 
-        [Fact]
-        public void It_throws_if_attempting_to_an_append_to_an_undefined_series()
-        {
-            var dataAccessor = GetConfiguration();
+        append.Should()
+              .Throw<TotException>()
+              .Which
+              .Message
+              .Should()
+              .Be("Series \"nope\" hasn't been defined. Use tot add to define it.");
+    }
 
-            Action append = () =>
-                dataAccessor.AppendValues("nope");
+    [Fact]
+    public void It_throws_if_too_many_values_are_added_to_a_series()
+    {
+        var dataAccessor = GetConfiguration();
 
-            append.Should()
-                  .Throw<TotException>()
-                  .Which
-                  .Message
-                  .Should()
-                  .Be("Series \"nope\" hasn't been defined. Use tot add to define it.");
-        }
+        dataAccessor.CreateSeries("series", "one", "two");
 
-        [Fact]
-        public void It_throws_if_too_many_values_are_added_to_a_series()
-        {
-            var dataAccessor = GetConfiguration();
+        Action append = () => dataAccessor.AppendValues("series", "one", "two", "three");
 
-            dataAccessor.CreateSeries("series", "one", "two");
+        append.Should()
+              .Throw<TotException>()
+              .Which
+              .Message
+              .Should()
+              .Be("Too many values specified. Series \"series\" expects values for: one,two");
+    }
 
-            Action append = () => dataAccessor.AppendValues("series", "one", "two", "three");
+    [Fact]
+    public void It_throws_if_too_few_values_are_added_to_a_series()
+    {
+        var dataAccessor = GetConfiguration();
 
-            append.Should()
-                  .Throw<TotException>()
-                  .Which
-                  .Message
-                  .Should()
-                  .Be("Too many values specified. Series \"series\" expects values for: one,two");
-        }
+        dataAccessor.CreateSeries("series", "one", "two");
 
-        [Fact]
-        public void It_throws_if_too_few_values_are_added_to_a_series()
-        {
-            var dataAccessor = GetConfiguration();
+        Action append = () => dataAccessor.AppendValues("series", "one");
 
-            dataAccessor.CreateSeries("series", "one", "two");
+        append.Should()
+              .Throw<TotException>()
+              .Which
+              .Message
+              .Should()
+              .Be("Too few values specified. Series \"series\" expects values for: one,two");
+    }
 
-            Action append = () => dataAccessor.AppendValues("series", "one");
+    [Fact]
+    public void Reading_a_nonexistent_series_throws()
+    {
+        Action read = () => GetConfiguration().ReadLines("nonexistent.csv").ToArray();
 
-            append.Should()
-                  .Throw<TotException>()
-                  .Which
-                  .Message
-                  .Should()
-                  .Be("Too few values specified. Series \"series\" expects values for: one,two");
-        }
+        read
+            .Should()
+            .Throw<TotException>()
+            .Which
+            .Message
+            .Should()
+            .Be("Series \"nonexistent.csv\" hasn't been defined. Use tot add to define it.");
+    }
 
-        [Fact]
-        public void Reading_a_nonexistent_series_throws()
-        {
-            Action read = () => GetConfiguration().ReadLines("nonexistent.csv").ToArray();
+    [Fact]
+    public void A_series_can_be_created_with_no_columns()
+    {
+        var configuration = GetConfiguration();
 
-            read
-                .Should()
-                .Throw<TotException>()
-                .Which
-                .Message
-                .Should()
-                .Be("Series \"nonexistent.csv\" hasn't been defined. Use tot add to define it.");
-        }
+        configuration.CreateSeries("things");
 
-        [Fact]
-        public void A_series_can_be_created_with_no_columns()
-        {
-            var configuration = GetConfiguration();
+        configuration.ReadLines("things")
+                     .Should()
+                     .BeEquivalentTo("time");
+    }
 
-            configuration.CreateSeries("things");
+    [Fact]
+    public void Empty_values_can_be_appended_to_record_just_a_timestamp()
+    {
+        var configuration = GetConfiguration();
 
-            configuration.ReadLines("things")
-                         .Should()
-                         .BeEquivalentTo("time");
-        }
+        configuration.CreateSeries("things");
 
-        [Fact]
-        public void Empty_values_can_be_appended_to_record_just_a_timestamp()
-        {
-            var configuration = GetConfiguration();
+        configuration.AppendValues("things");
 
-            configuration.CreateSeries("things");
+        configuration.ReadLines("things")
+                     .Should()
+                     .BeEquivalentTo(
+                         "time",
+                         Clock.Now.ToString("s"));
+    }
 
-            configuration.AppendValues("things");
+    [Fact]
+    public void Values_cannot_contain_commas()
+    {
+        var configuration = GetConfiguration();
 
-            configuration.ReadLines("things")
-                         .Should()
-                         .BeEquivalentTo(
-                             "time",
-                             Clock.Now.ToString("s"));
-        }
+        configuration.CreateSeries("stuff", "value");
 
-        [Fact]
-        public void Values_cannot_contain_commas()
-        {
-            var configuration = GetConfiguration();
+        Action append = () =>  configuration.AppendValues("stuff", "one,two");
 
-            configuration.CreateSeries("stuff", "value");
-
-          Action append = () =>  configuration.AppendValues("stuff", "one,two");
-
-          append.Should()
-                .Throw<TotException>()
-                .Which
-                .Message
-                .Should()
-                .Be("Values can't contain commas but this does: \"one,two\"");
-        }
+        append.Should()
+              .Throw<TotException>()
+              .Which
+              .Message
+              .Should()
+              .Be("Values can't contain commas but this does: \"one,two\"");
+    }
         
-        [Fact]
-        public void Values_cannot_contain_newlines()
+    [Fact]
+    public void Values_cannot_contain_newlines()
+    {
+        var configuration = GetConfiguration();
+
+        configuration.CreateSeries("stuff", "value");
+
+        Action append = () =>  configuration.AppendValues("stuff", "one\ntwo");
+
+        append.Should()
+              .Throw<TotException>()
+              .Which
+              .Message
+              .Should()
+              .Be("Values can't contain newlines but this does: \"one\ntwo\"");
+    }
+}
+
+public class FileDataAccessorTests : DataAccessorTests, IDisposable
+{
+    private readonly Lazy<(FileBasedDataAccessor configuration, DisposableDirectory tempDir)> _directory;
+
+    public FileDataAccessorTests()
+    {
+        _directory = new Lazy<(FileBasedDataAccessor, DisposableDirectory)>(() =>
         {
-            var configuration = GetConfiguration();
+            var tempDir = DisposableDirectory.Create();
 
-            configuration.CreateSeries("stuff", "value");
-
-          Action append = () =>  configuration.AppendValues("stuff", "one\ntwo");
-
-          append.Should()
-                .Throw<TotException>()
-                .Which
-                .Message
-                .Should()
-                .Be("Values can't contain newlines but this does: \"one\ntwo\"");
-        }
+            return (new FileBasedDataAccessor(tempDir.Directory, Clock), tempDir);
+        });
     }
 
-    public class FileDataAccessorTests : DataAccessorTests, IDisposable
+    protected override IDataAccessor GetConfiguration()
     {
-        private readonly Lazy<(FileBasedDataAccessor configuration, DisposableDirectory tempDir)> _directory;
-
-        public FileDataAccessorTests()
-        {
-            _directory = new Lazy<(FileBasedDataAccessor, DisposableDirectory)>(() =>
-            {
-                var tempDir = DisposableDirectory.Create();
-
-                return (new FileBasedDataAccessor(tempDir.Directory, Clock), tempDir);
-            });
-        }
-
-        protected override IDataAccessor GetConfiguration()
-        {
-            return _directory.Value.configuration;
-        }
-
-        public void Dispose()
-        {
-            if (_directory.IsValueCreated)
-            {
-                _directory.Value.tempDir.Dispose();
-            }
-        }
+        return _directory.Value.configuration;
     }
 
-    public class InMemoryDataAccessorTests : DataAccessorTests
+    public void Dispose()
     {
-        protected override IDataAccessor GetConfiguration()
+        if (_directory.IsValueCreated)
         {
-            return new InMemoryDataAccessor(Clock);
+            _directory.Value.tempDir.Dispose();
         }
+    }
+}
+
+public class InMemoryDataAccessorTests : DataAccessorTests
+{
+    protected override IDataAccessor GetConfiguration()
+    {
+        return new InMemoryDataAccessor(Clock);
     }
 }

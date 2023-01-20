@@ -1,29 +1,28 @@
 ﻿using System;
 
-namespace totlib
+namespace totlib;
+
+public interface IClock
 {
-    public interface IClock
+    DateTime Now { get; }
+}
+
+public class SystemClock : IClock
+{
+    public static IClock Instance { get; } = new SystemClock();
+
+    private SystemClock()
     {
-        DateTime Now { get; }
     }
 
-    public class SystemClock : IClock
-    {
-        public static IClock Instance { get; } = new SystemClock();
+    public DateTime Now => DateTime.Now;
+}
 
-        private SystemClock()
-        {
-        }
+public class TestClock : IClock
+{
+    public DateTime Now { get; set; } = new(2020, 9, 1);
 
-        public DateTime Now => DateTime.Now;
-    }
+    public void AdvanceBy(TimeSpan timespan) => Now += timespan;
 
-    public class TestClock : IClock
-    {
-        public DateTime Now { get; set; } = new DateTime(2020, 9, 1);
-
-        public void AdvanceBy(TimeSpan timespan) => Now += timespan;
-
-        public void AdvanceTo(DateTime dateTime) => Now = dateTime;
-    }
+    public void AdvanceTo(DateTime dateTime) => Now = dateTime;
 }
