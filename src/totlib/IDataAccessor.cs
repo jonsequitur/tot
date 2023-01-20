@@ -1,18 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace totlib
+namespace totlib;
+
+public interface IDataAccessor
 {
-    public interface IDataAccessor
-    {
-        public IEnumerable<string> ReadLines(string series);
+    public IEnumerable<string> ReadLines(string series);
 
-        void AppendValues(string seriesName, DateTime time, string[] values);
+    void AppendValues(string seriesName, DateTime time, string[] values);
 
-        void CreateSeries(string seriesName, string[] columnNames);
+    void CreateSeries(string seriesName, string[] columnNames);
 
-        IEnumerable<string> ListSeries();
+    IEnumerable<string> ListSeries();
 
-        IClock Clock { get; }
-    }
+    IClock Clock { get; }
 }

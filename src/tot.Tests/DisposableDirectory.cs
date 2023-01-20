@@ -1,29 +1,28 @@
 using System;
 using System.IO;
 
-namespace tot.Tests
+namespace tot.Tests;
+
+public class DisposableDirectory : IDisposable
 {
-    public class DisposableDirectory : IDisposable
+    public static DisposableDirectory Create()
     {
-        public static DisposableDirectory Create()
-        {
-            var tempDir = System.IO.Directory.CreateDirectory(
-                Path.Combine(
-                    Path.GetTempPath(),
-                    Path.GetRandomFileName()));
-            return new DisposableDirectory(tempDir);
-        }
+        var tempDir = System.IO.Directory.CreateDirectory(
+            Path.Combine(
+                Path.GetTempPath(),
+                Path.GetRandomFileName()));
+        return new DisposableDirectory(tempDir);
+    }
 
-        private DisposableDirectory(DirectoryInfo directory)
-        {
-            Directory = directory;
-        }
+    private DisposableDirectory(DirectoryInfo directory)
+    {
+        Directory = directory;
+    }
 
-        public DirectoryInfo Directory { get; }
+    public DirectoryInfo Directory { get; }
 
-        public void Dispose()
-        {
-            Directory.Delete(recursive: true);
-        }
+    public void Dispose()
+    {
+        Directory.Delete(recursive: true);
     }
 }

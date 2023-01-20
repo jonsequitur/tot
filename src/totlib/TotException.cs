@@ -1,11 +1,10 @@
 ﻿using System;
 
-namespace totlib
+namespace totlib;
+
+public class TotException : Exception
 {
-    public class TotException : Exception
+    public TotException(string message) : base(message)
     {
-        public TotException(string message) : base(message)
-        {
-        }
     }
 }
