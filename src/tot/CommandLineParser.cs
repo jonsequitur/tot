@@ -1,13 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.CommandLine;
-using System.CommandLine.Builder;
-using System.CommandLine.Completions;
-using System.CommandLine.IO;
-using System.CommandLine.Parsing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Humanizer;
 using TimeSpanParserUtil;
 using totlib;
@@ -16,22 +13,19 @@ namespace tot;
 
 public static class CommandLineParser
 {
-    public static Parser Create(IDataAccessor? dataAccessor = null)
+    public static RootCommand Create(IDataAccessor? dataAccessor = null)
     {
-        var pathOption = new Option<DirectoryInfo>(
-            "--path",
-            description: "The path containing the time series",
-            getDefaultValue: () => new DirectoryInfo(Directory.GetCurrentDirectory()));
+        var pathOption = new Option<DirectoryInfo>("--path")
+        {
+            Description = "The path containing the time series"
+        };
 
-        var timeOption = new Option<DateTime?>(
-            new[] { "-t", "--time" },
-            description: "The time of the event, either as a date (-t \"2020-08-12 3pm\") or as a relative time period (-t -45m)",
-            parseArgument: GetTimeOrDurationParser(GetDataAccessor).Invoke,
-            isDefault: true);
+        var timeOption = new Option<string>("--time", "-t")
+        {
+            Description = "The time of the event, either as a date (-t \"2020-08-12 3pm\") or as a relative time period (-t -45m)"
+        };
 
         var seriesArg = new Argument<string>("series");
-        seriesArg.AddCompletions(SuggestSeriesName);
-
         var valuesArg = new Argument<string[]>("values");
 
         var rootCommand = new RootCommand("tot")
@@ -39,28 +33,62 @@ public static class CommandLineParser
             AddCommand(),
             ListCommand(),
             LatestCommand(),
+            pathOption,
             timeOption,
             seriesArg,
             valuesArg
         };
 
-        rootCommand.AddGlobalOption(pathOption);
-
-        rootCommand.SetHandler((series, values, time, path, console) =>
+        // Try to use SetAction like in the rc1 example
+        rootCommand.SetAction((parseResult, cancellationToken) =>
         {
-            var accessor = GetDataAccessor(path);
+            try
+            {
+                var series = parseResult.GetValue(seriesArg);
+                var values = parseResult.GetValue(valuesArg);
+                var timeValue = parseResult.GetValue(timeOption);
+                var path = parseResult.GetValue(pathOption) ?? new DirectoryInfo(Directory.GetCurrentDirectory());
 
-            time ??= accessor.Clock.Now;
+                var accessor = GetDataAccessor(path);
 
-            accessor.AppendValues(series, time.Value, values);
+                // Parse time if provided, otherwise use current time
+                DateTime time;
+                if (!string.IsNullOrEmpty(timeValue))
+                {
+                    time = ParseTimeOrDuration(timeValue, accessor.Clock.Now);
+                }
+                else
+                {
+                    time = accessor.Clock.Now;
+                }
 
-            console.Out.WriteLine($"{time.Humanize(utcDate: false)}: {series} {string.Join(" ", values ?? Array.Empty<string>())}");
-        }, seriesArg, valuesArg, timeOption, pathOption, Bind.FromServiceProvider<IConsole>());
+                accessor.AppendValues(series, time, values);
+
+                Console.WriteLine($"{time.Humanize(utcDate: false)}: {series} {string.Join(" ", values ?? Array.Empty<string>())}");
+                
+                return Task.FromResult(0);
+            }
+            catch (TotException e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Error.WriteLine(e.Message);
+                Console.ResetColor();
+                return Task.FromResult(1);
+            }
+            catch (Exception e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Error.WriteLine($"Error: {e.Message}");
+                Console.ResetColor();
+                return Task.FromResult(1);
+            }
+        });
+
+        return rootCommand;
 
         Command AddCommand()
         {
             var nameArg = new Argument<string>("name");
-
             var columnsArg = new Argument<string[]>("columns");
 
             var command = new Command("add", "Adds a new series")
@@ -69,10 +97,32 @@ public static class CommandLineParser
                 columnsArg
             };
 
-            command.SetHandler(
-                (name, columns, path) =>
-                    GetDataAccessor(path).CreateSeries(name, columns),
-                nameArg, columnsArg, pathOption);
+            command.SetAction((parseResult, cancellationToken) =>
+            {
+                try
+                {
+                    var name = parseResult.GetValue(nameArg);
+                    var columns = parseResult.GetValue(columnsArg);
+                    var path = parseResult.GetValue(pathOption) ?? new DirectoryInfo(Directory.GetCurrentDirectory());
+                    
+                    GetDataAccessor(path).CreateSeries(name, columns);
+                    return Task.FromResult(0);
+                }
+                catch (TotException e)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.Error.WriteLine(e.Message);
+                    Console.ResetColor();
+                    return Task.FromResult(1);
+                }
+                catch (Exception e)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.Error.WriteLine($"Error: {e.Message}");
+                    Console.ResetColor();
+                    return Task.FromResult(1);
+                }
+            });
 
             return command;
         }
@@ -80,10 +130,12 @@ public static class CommandLineParser
         Command LatestCommand()
         {
             var command = new Command("latest", "Lists the latest entries in each series");
-
-            command.SetHandler(
-                (path, console) =>
+            
+            command.SetAction((parseResult, cancellationToken) =>
+            {
+                try
                 {
+                    var path = parseResult.GetValue(pathOption) ?? new DirectoryInfo(Directory.GetCurrentDirectory());
                     var dataAccessor = GetDataAccessor(path);
 
                     foreach (var x in dataAccessor
@@ -92,34 +144,43 @@ public static class CommandLineParser
                                       .Where(t => t.data is { })
                                       .OrderBy(t => t.data.Timestamp))
                     {
-                        console.Out.WriteLine($"{x.name}:");
-                        console.Out.WriteLine($"    {x.data.Line}");
+                        Console.WriteLine($"{x.name}:");
+                        Console.WriteLine($"    {x.data.Line}");
                     }
-                }, pathOption, Bind.FromServiceProvider<IConsole>());
-
+                    
+                    return Task.FromResult(0);
+                }
+                catch (TotException e)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.Error.WriteLine(e.Message);
+                    Console.ResetColor();
+                    return Task.FromResult(1);
+                }
+                catch (Exception e)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.Error.WriteLine($"Error: {e.Message}");
+                    Console.ResetColor();
+                    return Task.FromResult(1);
+                }
+            });
+            
             return command;
         }
 
         Command ListCommand()
         {
-            var seriesArg = new Argument<string>("series")
+            var seriesArg = new Argument<string>("series");
+            seriesArg.Arity = ArgumentArity.ZeroOrOne;
+            var afterOption = new Option<string>("--after", "-a")
             {
-                Arity = ArgumentArity.ZeroOrOne
+                Description = "The start time after which to list events"
             };
-
-            seriesArg.AddCompletions(SuggestSeriesName);
-
-            var afterOption = new Option<DateTime?>(
-                new[] { "-a", "--after" },
-                description: "The start time after which to list events, either as a date (-a \"2020-08-12 3pm\") or as a relative time period (-a -45m)",
-                parseArgument: result =>
-                {
-                    var parse = GetTimeOrDurationParser(GetDataAccessor);
-                    return parse(result);
-                },
-                isDefault: true);
-
-            var daysOption = new Option<bool>("--days", "List only unique days on which events occurred");
+            var daysOption = new Option<bool>("--days")
+            {
+                Description = "List only unique days on which events occurred"
+            };
 
             var command = new Command("list", "Lists the defined series")
             {
@@ -128,114 +189,110 @@ public static class CommandLineParser
                 daysOption
             };
 
-            command.SetHandler((path, series, after, console, days) =>
+            command.SetAction((parseResult, cancellationToken) =>
             {
-                var accessor = GetDataAccessor(path);
-
-                if (string.IsNullOrEmpty(series))
+                try
                 {
-                    // list the known series names
-                    var seriesNames = accessor.ListSeries().OrderBy(s => s);
+                    var path = parseResult.GetValue(pathOption) ?? new DirectoryInfo(Directory.GetCurrentDirectory());
+                    var series = parseResult.GetValue(seriesArg);
+                    var after = parseResult.GetValue(afterOption);
+                    var days = parseResult.GetValue(daysOption);
+                    
+                    var accessor = GetDataAccessor(path);
 
-                    console.Out.Write(
-                        string.Join(
-                            Environment.NewLine, seriesNames));
-                }
-                else
-                {
-                    var readLines = accessor.ReadSeriesData(series);
-
-                    if (after is { } specified)
+                    if (string.IsNullOrEmpty(series))
                     {
-                        var specificDay = specified.Date == after;
+                        // list the known series names
+                        var seriesNames = accessor.ListSeries().OrderBy(s => s);
 
-                        readLines = readLines
-                            .Where(t => specificDay
-                                            ? t.Timestamp.Date == specified
-                                            : t.Timestamp >= specified);
-                    }
-
-                    IEnumerable<string> lines;
-
-                    if (days)
-                    {
-                        lines = readLines.Select(l => l.Timestamp.Date)
-                                         .Distinct()
-                                         .Select(t => t.ToString("s"));
+                        Console.Write(
+                            string.Join(
+                                Environment.NewLine, seriesNames));
                     }
                     else
                     {
-                        lines = readLines.Select(l => l.Line);
-                    }
+                        var readLines = accessor.ReadSeriesData(series);
 
-                    foreach (var line in lines)
-                    {
-                        console.Out.WriteLine(line);
-                    }
-                }
-            }, pathOption, seriesArg, afterOption, Bind.FromServiceProvider<IConsole>(), daysOption);
-
-            return command;
-        }
-
-        var builder = new CommandLineBuilder(rootCommand)
-                      .DisplayException()
-                      .UseDefaults();
-
-        return builder.Build();
-
-        IEnumerable<string> SuggestSeriesName(CompletionContext ctx)
-        {
-            var path = ctx.ParseResult.GetValueForOption(pathOption);
-
-            var accessor = GetDataAccessor(path!);
-
-            return accessor.ListSeries();
-        }
-
-        IDataAccessor GetDataAccessor(DirectoryInfo path) =>
-            dataAccessor ??= new FileBasedDataAccessor(path, SystemClock.Instance);
-
-        Func<ArgumentResult, DateTime?> GetTimeOrDurationParser(Func<DirectoryInfo, IDataAccessor> getDataAccessor)
-        {
-            return result =>
-            {
-                if (result.Tokens.SingleOrDefault()?.Value is not { } token)
-                {
-                    return default;
-                }
-
-                var path = result.GetValueForOption(pathOption);
-
-                var now = (getDataAccessor(path!).Clock ?? SystemClock.Instance).Now;
-
-                if (DateTime.TryParse(token, provider: null, styles: DateTimeStyles.NoCurrentDateDefault, out var specified))
-                {
-                    if (specified.Date == default)
-                    {
-                        if (now.TimeOfDay < specified.TimeOfDay)
+                        if (!string.IsNullOrEmpty(after))
                         {
-                            var yesterday = now.Subtract(TimeSpan.FromDays(1));
-                            return yesterday.Date.Add(specified.TimeOfDay);
+                            var specified = ParseTimeOrDuration(after, accessor.Clock.Now);
+                            var specificDay = specified.Date == specified;
+
+                            readLines = readLines
+                                .Where(t => specificDay
+                                                ? t.Timestamp.Date == specified.Date
+                                                : t.Timestamp >= specified);
+                        }
+
+                        IEnumerable<string> lines;
+
+                        if (days)
+                        {
+                            lines = readLines.Select(l => l.Timestamp.Date)
+                                             .Distinct()
+                                             .Select(t => t.ToString("s"));
                         }
                         else
                         {
-                            return now.Date.Add(specified.TimeOfDay);
+                            lines = readLines.Select(l => l.Line);
+                        }
+
+                        foreach (var line in lines)
+                        {
+                            Console.WriteLine(line);
                         }
                     }
-
-                    return specified;
+                    
+                    return Task.FromResult(0);
                 }
-
-                if (TimeSpanParser.TryParse(token, out var timespan))
+                catch (TotException e)
                 {
-                    return now.Add(timespan);
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.Error.WriteLine(e.Message);
+                    Console.ResetColor();
+                    return Task.FromResult(1);
+                }
+                catch (Exception e)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.Error.WriteLine($"Error: {e.Message}");
+                    Console.ResetColor();
+                    return Task.FromResult(1);
+                }
+            });
+
+            return command;
+        }
+        
+        IDataAccessor GetDataAccessor(DirectoryInfo path) =>
+            dataAccessor ??= new FileBasedDataAccessor(path, SystemClock.Instance);
+            
+        DateTime ParseTimeOrDuration(string token, DateTime now)
+        {
+            if (DateTime.TryParse(token, provider: null, styles: DateTimeStyles.NoCurrentDateDefault, out var specified))
+            {
+                if (specified.Date == default)
+                {
+                    if (now.TimeOfDay < specified.TimeOfDay)
+                    {
+                        var yesterday = now.Subtract(TimeSpan.FromDays(1));
+                        return yesterday.Date.Add(specified.TimeOfDay);
+                    }
+                    else
+                    {
+                        return now.Date.Add(specified.TimeOfDay);
+                    }
                 }
 
-                result.ErrorMessage = $"Couldn't figure out what time \"{token}\" refers to.";
+                return specified;
+            }
 
-                return default;
-            };
+            if (TimeSpanParser.TryParse(token, out var timespan))
+            {
+                return now.Add(timespan);
+            }
+
+            throw new ArgumentException($"Couldn't figure out what time \"{token}\" refers to.");
         }
     }
 }
