@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.CommandLine;
+using System.CommandLine.Builder;
 using System.CommandLine.Completions;
 using System.CommandLine.IO;
 using System.CommandLine.Parsing;
@@ -20,16 +21,16 @@ public static class CommandLineParser
         var pathOption = new Option<DirectoryInfo>(
             "--path",
             description: "The path containing the time series",
-            defaultValueFactory: () => new DirectoryInfo(Directory.GetCurrentDirectory()));
+            getDefaultValue: () => new DirectoryInfo(Directory.GetCurrentDirectory()));
 
         var timeOption = new Option<DateTime?>(
             new[] { "-t", "--time" },
             description: "The time of the event, either as a date (-t \"2020-08-12 3pm\") or as a relative time period (-t -45m)",
-            parseArgument: ParseTimeOrDuration(GetDataAccessor),
+            parseArgument: GetTimeOrDurationParser(GetDataAccessor).Invoke,
             isDefault: true);
 
         var seriesArg = new Argument<string>("series");
-        seriesArg.CompletionSources.Add(SuggestSeriesName);
+        seriesArg.AddCompletions(SuggestSeriesName);
 
         var valuesArg = new Argument<string[]>("values");
 
@@ -106,12 +107,16 @@ public static class CommandLineParser
                 Arity = ArgumentArity.ZeroOrOne
             };
 
-            seriesArg.CompletionSources.Add(SuggestSeriesName);
+            seriesArg.AddCompletions(SuggestSeriesName);
 
             var afterOption = new Option<DateTime?>(
                 new[] { "-a", "--after" },
                 description: "The start time after which to list events, either as a date (-a \"2020-08-12 3pm\") or as a relative time period (-a -45m)",
-                parseArgument: ParseTimeOrDuration(GetDataAccessor),
+                parseArgument: result =>
+                {
+                    var parse = GetTimeOrDurationParser(GetDataAccessor);
+                    return parse(result);
+                },
                 isDefault: true);
 
             var daysOption = new Option<bool>("--days", "List only unique days on which events occurred");
@@ -181,9 +186,9 @@ public static class CommandLineParser
 
         IEnumerable<string> SuggestSeriesName(CompletionContext ctx)
         {
-            var path = ctx.ParseResult.GetValue(pathOption);
+            var path = ctx.ParseResult.GetValueForOption(pathOption);
 
-            var accessor = GetDataAccessor(path);
+            var accessor = GetDataAccessor(path!);
 
             return accessor.ListSeries();
         }
@@ -191,7 +196,7 @@ public static class CommandLineParser
         IDataAccessor GetDataAccessor(DirectoryInfo path) =>
             dataAccessor ??= new FileBasedDataAccessor(path, SystemClock.Instance);
 
-        Func<ArgumentResult, DateTime?> ParseTimeOrDuration(Func<DirectoryInfo, IDataAccessor> getDataAccessor)
+        Func<ArgumentResult, DateTime?> GetTimeOrDurationParser(Func<DirectoryInfo, IDataAccessor> getDataAccessor)
         {
             return result =>
             {
@@ -200,9 +205,9 @@ public static class CommandLineParser
                     return default;
                 }
 
-                var path = result.GetValue(pathOption);
+                var path = result.GetValueForOption(pathOption);
 
-                var now = (getDataAccessor(path).Clock ?? SystemClock.Instance).Now;
+                var now = (getDataAccessor(path!).Clock ?? SystemClock.Instance).Now;
 
                 if (DateTime.TryParse(token, provider: null, styles: DateTimeStyles.NoCurrentDateDefault, out var specified))
                 {

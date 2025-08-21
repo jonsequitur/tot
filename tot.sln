@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30413.136
 MinimumVisualStudioVersion = 15.0.26124.0
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "tot", "tot\tot.csproj", "{57DBECDE-C20A-44D6-8D0E-297361309782}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "tot", "src\tot\tot.csproj", "{57DBECDE-C20A-44D6-8D0E-297361309782}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "tot.Tests", "tot.Tests\tot.Tests.csproj", "{30264D25-4AC3-473C-80B3-ABA7E4FDB7FE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "tot.Tests", "src\tot.Tests\tot.Tests.csproj", "{30264D25-4AC3-473C-80B3-ABA7E4FDB7FE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "totlib", "totlib\totlib.csproj", "{A3BC1A6F-2110-417C-9A4A-C1C970031518}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "totlib", "src\totlib\totlib.csproj", "{A3BC1A6F-2110-417C-9A4A-C1C970031518}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B0249DFC-647E-489B-A7CC-AC921A5E61CD}"
 EndProject

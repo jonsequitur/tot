@@ -7,7 +7,7 @@ configuration:
 
 build_script:
   - cmd: >-
-      dotnet build .\src\tot.sln -p:Version=%APPVEYOR_BUILD_VERSION%
+      dotnet build .\tot.sln -p:Version=%APPVEYOR_BUILD_VERSION%
 
 after_build:
   - cmd: >-
