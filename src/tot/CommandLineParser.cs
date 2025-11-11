@@ -28,6 +28,21 @@ public static class CommandLineParser
         var seriesArg = new Argument<string>("series");
         var valuesArg = new Argument<string[]>("values");
 
+        // Add completion source for series names
+        seriesArg.CompletionSources.Add(context =>
+        {
+            try
+            {
+                var path = context.ParseResult.GetValue(pathOption) ?? new DirectoryInfo(Directory.GetCurrentDirectory());
+                var accessor = GetDataAccessor(path);
+                return accessor.ListSeries();
+            }
+            catch
+            {
+                return Enumerable.Empty<string>();
+            }
+        });
+
         var rootCommand = new RootCommand("tot")
         {
             AddCommand(),
@@ -173,6 +188,22 @@ public static class CommandLineParser
         {
             var seriesArg = new Argument<string>("series");
             seriesArg.Arity = ArgumentArity.ZeroOrOne;
+            
+            // Add completion source for series names
+            seriesArg.CompletionSources.Add(context =>
+            {
+                try
+                {
+                    var path = context.ParseResult.GetValue(pathOption) ?? new DirectoryInfo(Directory.GetCurrentDirectory());
+                    var accessor = GetDataAccessor(path);
+                    return accessor.ListSeries();
+                }
+                catch
+                {
+                    return Enumerable.Empty<string>();
+                }
+            });
+            
             var afterOption = new Option<string>("--after", "-a")
             {
                 Description = "The start time after which to list events"
