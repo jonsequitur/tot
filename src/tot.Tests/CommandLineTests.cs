@@ -207,34 +207,32 @@ public class CommandLineTests
         result.Should().Be(0);
     }
 
-    [Fact(Skip = "Completion API changed in rc version")]
+    [Fact]
     public void tot_can_provide_completions_on_known_series()
     {
         Invoke("add apple");
         Invoke("add banana");
         Invoke("add cherry");
 
-        // TODO: Update for rc completion API
-        // _rootCommand.Parse("")
-        //        .GetCompletions()
-        //        .Select(c => c.Label)
-        //        .Should()
-        //        .Contain(new[] { "apple", "banana", "cherry" });
+        _rootCommand.Parse("")
+                   .GetCompletions()
+                   .Select(c => c.Label)
+                   .Should()
+                   .Contain(new[] { "apple", "banana", "cherry" });
     }
 
-    [Fact(Skip = "Completion API changed in rc version")]
+    [Fact]
     public void tot_list_can_provide_completions_on_known_series()
     {
         Invoke("add apple");
         Invoke("add banana");
         Invoke("add cherry");
 
-        // TODO: Update for rc completion API
-        // _rootCommand.Parse("list ")
-        //        .GetCompletions()
-        //        .Select(c => c.Label)
-        //        .Should()
-        //        .Contain(new[] { "apple", "banana", "cherry" });
+        _rootCommand.Parse("list ")
+                   .GetCompletions()
+                   .Select(c => c.Label)
+                   .Should()
+                   .Contain(new[] { "apple", "banana", "cherry" });
     }
 
     [Fact]
